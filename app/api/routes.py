@@ -15,9 +15,10 @@ router = APIRouter()
 @router.get("/summary")
 async def get_summary(db: Session = Depends(get_db)):
     """Get overall stats for summary cards."""
-    # Get all settled bets
+    # Get all settled bets (exclude VOIDED from win rate calc)
     settled = db.query(Bet).filter(Bet.result.in_(["WON", "LOST"])).all()
     pending = db.query(Bet).filter(Bet.result == "PENDING").count()
+    voided = db.query(Bet).filter(Bet.result == "VOIDED").count()
 
     if not settled:
         return {
@@ -26,6 +27,7 @@ async def get_summary(db: Session = Depends(get_db)):
             "roi": 0,
             "total_bets": 0,
             "pending_bets": pending,
+            "voided_bets": voided,
             "wins": 0,
             "losses": 0,
         }
@@ -50,6 +52,7 @@ async def get_summary(db: Session = Depends(get_db)):
         "roi": round(roi, 1),
         "total_bets": total_bets,
         "pending_bets": pending,
+        "voided_bets": voided,
         "wins": wins,
         "losses": losses,
     }

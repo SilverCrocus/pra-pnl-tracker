@@ -35,8 +35,14 @@ def sync_bets_from_csv(csv_path: Path, db: Session) -> int:
 
         # Determine result
         result = "PENDING"
+        actual_minutes = row.get('actual_minutes')
+
         if pd.notna(row.get('actual_pra')):
-            if row['direction'] == 'OVER':
+            # Check for DNP/injury - player didn't play or played < 1 minute
+            # These bets are typically voided by sportsbooks
+            if pd.notna(actual_minutes) and actual_minutes < 1:
+                result = "VOIDED"
+            elif row['direction'] == 'OVER':
                 result = "WON" if row['actual_pra'] > row['betting_line'] else "LOST"
             else:
                 result = "WON" if row['actual_pra'] < row['betting_line'] else "LOST"
@@ -84,14 +90,16 @@ def recalculate_daily_summaries(db: Session):
         wins = sum(1 for b in bets if b.result == "WON")
         losses = sum(1 for b in bets if b.result == "LOST")
         pending = sum(1 for b in bets if b.result == "PENDING")
+        voided = sum(1 for b in bets if b.result == "VOIDED")
 
-        # Calculate daily P&L
+        # Calculate daily P&L (VOIDED bets don't affect P&L - money returned)
         daily_pnl = 0.0
         for bet in bets:
             if bet.result == "WON":
                 daily_pnl += calculate_pnl(True, bet.tier_units)
             elif bet.result == "LOST":
                 daily_pnl += calculate_pnl(False, bet.tier_units)
+            # VOIDED bets: no P&L impact (stake returned)
 
         running_bankroll += daily_pnl
 

@@ -253,10 +253,16 @@ async function loadRecentBets() {
         }
 
         container.innerHTML = data.map(bet => {
-            const icon = bet.result === 'WON' ? '✅' : bet.result === 'LOST' ? '❌' : '⏳';
+            let icon = '⏳';
+            if (bet.result === 'WON') icon = '✅';
+            else if (bet.result === 'LOST') icon = '❌';
+            else if (bet.result === 'VOIDED') icon = '🚫';
+
             const tierClass = bet.tier === 'GOLDEN' ? 'golden' : 'high-volatility';
             const resultClass = bet.result.toLowerCase();
-            const actualStr = bet.actual_pra !== null ? `Actual: ${bet.actual_pra}` : 'Pending';
+            let actualStr = 'Pending';
+            if (bet.result === 'VOIDED') actualStr = 'DNP/Voided';
+            else if (bet.actual_pra !== null) actualStr = `Actual: ${bet.actual_pra}`;
 
             return `
                 <div class="bet-row">

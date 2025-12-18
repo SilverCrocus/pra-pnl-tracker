@@ -276,6 +276,10 @@ tr:last-child td {
     color: var(--text-muted);
 }
 
+.bet-result.voided {
+    color: #a855f7;
+}
+
 /* Loading State */
 .loading {
     display: flex;
