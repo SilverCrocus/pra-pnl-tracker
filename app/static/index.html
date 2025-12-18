@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldilocks V2 PnL Tracker</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Goldilocks <span>V2</span> Performance</h1>
+            <span class="last-updated" id="lastUpdated">Loading...</span>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="card">
+                <div class="card-label">Bankroll</div>
+                <div class="card-value neutral" id="bankroll">$--</div>
+                <div class="card-sub">Started at $100</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Win Rate</div>
+                <div class="card-value neutral" id="winRate">--%</div>
+                <div class="card-sub" id="winLossCount">0W - 0L</div>
+            </div>
+            <div class="card">
+                <div class="card-label">ROI</div>
+                <div class="card-value neutral" id="roi">--%</div>
+                <div class="card-sub" id="totalBets">0 bets</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Pending</div>
+                <div class="card-value neutral" id="pending">--</div>
+                <div class="card-sub">Awaiting results</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-section">
+            <div class="chart-container">
+                <h2>Bankroll Over Time</h2>
+                <div class="chart-wrapper">
+                    <canvas id="bankrollChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h2>Daily P&L</h2>
+                <div class="chart-wrapper">
+                    <canvas id="pnlChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables -->
+        <div class="tables-section">
+            <div class="table-container">
+                <h2>By Tier</h2>
+                <table id="tierTable">
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th>Record</th>
+                            <th>Win Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="table-container">
+                <h2>By Date</h2>
+                <table id="dateTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Record</th>
+                            <th>Win Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Bets -->
+        <div class="recent-bets">
+            <h2>Recent Bets</h2>
+            <div id="recentBets">
+                <div class="loading">Loading bets...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/chart.js"></script>
+</body>
+</html>
