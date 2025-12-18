@@ -55,5 +55,10 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Render
 .render/
