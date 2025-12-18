@@ -13,6 +13,9 @@ MODELS_DIR = PROJECT_ROOT / "ml_models"
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./pra_pnl.db")
 
+# API Key for sync endpoint (set in environment)
+SYNC_API_KEY = os.getenv("SYNC_API_KEY", "dev-key-change-me")
+
 # Betting config
 STARTING_BANKROLL = 100.0
 STANDARD_ODDS = -110  # American odds

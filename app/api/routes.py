@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
 from app.models.database import get_db, Bet, DailySummary
-from app.config import STARTING_BANKROLL
+from app.config import STARTING_BANKROLL, SYNC_API_KEY, calculate_pnl
 
 router = APIRouter()
 
@@ -174,6 +174,106 @@ async def run_pipeline(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_daily_pipeline)
 
     return {"status": "Pipeline started", "message": "Running in background"}
+
+
+@router.post("/sync-bets")
+async def sync_bets(
+    bets: List[dict],
+    api_key: str,
+    db: Session = Depends(get_db)
+):
+    """Sync bets from external source (protected by API key)."""
+    if api_key != SYNC_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    synced = 0
+    for bet_data in bets:
+        # Check if bet exists
+        existing = db.query(Bet).filter(
+            Bet.player_id == bet_data["player_id"],
+            Bet.game_date == date.fromisoformat(bet_data["game_date"])
+        ).first()
+
+        if existing:
+            # Update existing bet
+            for key, value in bet_data.items():
+                if key == "game_date":
+                    value = date.fromisoformat(value)
+                if hasattr(existing, key):
+                    setattr(existing, key, value)
+        else:
+            # Create new bet
+            bet = Bet(
+                player_id=bet_data["player_id"],
+                player_name=bet_data["player_name"],
+                game_date=date.fromisoformat(bet_data["game_date"]),
+                betting_line=bet_data["betting_line"],
+                direction=bet_data["direction"],
+                prediction=bet_data.get("prediction"),
+                tier=bet_data["tier"],
+                tier_units=bet_data.get("tier_units", 1.0),
+                actual_pra=bet_data.get("actual_pra"),
+                actual_minutes=bet_data.get("actual_minutes"),
+                result=bet_data.get("result", "PENDING"),
+            )
+            db.add(bet)
+        synced += 1
+
+    db.commit()
+
+    # Recalculate daily summaries
+    await recalculate_summaries(db)
+
+    return {"status": "success", "synced": synced}
+
+
+async def recalculate_summaries(db: Session):
+    """Recalculate all daily summaries from bets."""
+    # Clear existing summaries
+    db.query(DailySummary).delete()
+
+    # Get all settled bets grouped by date
+    settled_bets = db.query(Bet).filter(
+        Bet.result.in_(["WON", "LOST"])
+    ).order_by(Bet.game_date).all()
+
+    if not settled_bets:
+        db.commit()
+        return
+
+    # Group by date
+    by_date = {}
+    for bet in settled_bets:
+        d = bet.game_date
+        if d not in by_date:
+            by_date[d] = []
+        by_date[d].append(bet)
+
+    # Calculate running bankroll
+    bankroll = STARTING_BANKROLL
+
+    for game_date in sorted(by_date.keys()):
+        day_bets = by_date[game_date]
+        wins = sum(1 for b in day_bets if b.result == "WON")
+        losses = len(day_bets) - wins
+
+        # Calculate P&L for the day
+        daily_pnl = sum(
+            calculate_pnl(b.result == "WON", b.tier_units)
+            for b in day_bets
+        )
+        bankroll += daily_pnl
+
+        summary = DailySummary(
+            date=game_date,
+            wins=wins,
+            losses=losses,
+            daily_pnl=daily_pnl,
+            bankroll=bankroll,
+        )
+        db.add(summary)
+
+    db.commit()
 
 
 @router.get("/health")
