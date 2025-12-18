@@ -12,7 +12,7 @@ PRODUCTION_URL = "https://pra-pnl-tracker.onrender.com"
 API_KEY = "5mFbYUegphFYJKpPGFXwCh6EeRXrR0v10ZcoBAnXj44"
 
 # Path to NBA_PRA bets directory
-NBA_PRA_BETS = Path.home() / "Documents" / "NBA_PRA" / "bets"
+NBA_PRA_BETS = Path.home() / "Documents" / "NBA_PRA" / "production" / "outputs" / "bets"
 
 
 def load_bets() -> list[dict]:
