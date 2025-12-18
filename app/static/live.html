@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Tracker - Goldilocks V2</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -17,39 +18,38 @@
             </nav>
         </header>
 
-        <!-- Live Summary -->
-        <div class="live-summary">
-            <div class="live-stat">
-                <span class="live-stat-value" id="totalBets">0</span>
-                <span class="live-stat-label">Bets Today</span>
+        <!-- Live Summary Bar -->
+        <div class="live-summary-bar">
+            <div class="summary-stat">
+                <span class="stat-value" id="totalBets">0</span>
+                <span class="stat-label">Tracking</span>
             </div>
-            <div class="live-stat">
-                <span class="live-stat-value live-pulse" id="liveCount">0</span>
-                <span class="live-stat-label">Live Now</span>
+            <div class="summary-stat">
+                <div class="live-indicator">
+                    <span class="live-dot"></span>
+                    <span class="stat-value live-text" id="liveCount">0</span>
+                </div>
+                <span class="stat-label">Live</span>
             </div>
-            <div class="live-stat">
-                <span class="live-stat-value positive" id="hitsCount">0</span>
-                <span class="live-stat-label">Hits</span>
+            <div class="summary-stat">
+                <span class="stat-value hit-text" id="hitsCount">0</span>
+                <span class="stat-label">Hits</span>
             </div>
-            <div class="live-stat">
-                <span class="live-stat-value" id="pendingCount">0</span>
-                <span class="live-stat-label">Pending</span>
+            <div class="summary-stat">
+                <span class="stat-value" id="pendingCount">0</span>
+                <span class="stat-label">Pending</span>
+            </div>
+            <div class="summary-stat last-update-stat">
+                <span class="stat-label" id="lastUpdate">Updating...</span>
             </div>
         </div>
 
-        <!-- Games Scoreboard -->
-        <div class="games-bar" id="gamesBar">
-            <div class="loading">Loading games...</div>
-        </div>
-
-        <!-- Bet Cards -->
-        <div class="live-bets-grid" id="liveBets">
-            <div class="loading">Loading bets...</div>
-        </div>
-
-        <!-- Last Update -->
-        <div class="last-update" id="lastUpdate">
-            Updating every 5 seconds...
+        <!-- Game Cards Container -->
+        <div class="game-cards-container" id="gameCards">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <span>Loading live data...</span>
+            </div>
         </div>
     </div>
 

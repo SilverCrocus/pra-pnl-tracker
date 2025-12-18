@@ -1,150 +1,220 @@
-// Goldilocks V2 Live Tracker
-
-const STATUS_EMOJI = {
-    'hit': '&#x2705;',      // checkmark
-    'on_track': '&#x1F525;', // fire
-    'safe': '&#x2705;',      // checkmark
-    'needs_more': '&#x26A0;&#xFE0F;', // warning
-    'close': '&#x26A0;&#xFE0F;',      // warning
-    'unlikely': '&#x274C;',  // X
-    'busted': '&#x274C;',    // X
-    'danger': '&#x1F525;',   // fire
-    'miss': '&#x274C;',      // X
-    'not_started': '&#x23F0;', // clock
-};
+// Goldilocks V2 Live Tracker - Game Cards Edition
 
 async function loadLiveBets() {
     try {
         const response = await fetch('/api/live-bets');
         const data = await response.json();
 
-        // Update summary
+        // Update summary stats
         document.getElementById('totalBets').textContent = data.summary.total;
         document.getElementById('liveCount').textContent = data.summary.live;
         document.getElementById('hitsCount').textContent = data.summary.hits;
         document.getElementById('pendingCount').textContent = data.summary.pending;
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
 
-        // Update games bar
-        renderGamesBar(data.games);
+        // Group bets by game
+        const betsByGame = groupBetsByGame(data.bets, data.games);
 
-        // Update bets
-        renderBets(data.bets);
-
-        // Update timestamp
-        document.getElementById('lastUpdate').textContent =
-            `Last updated: ${new Date().toLocaleTimeString()}`;
+        // Render game cards
+        renderGameCards(betsByGame, data.games);
 
     } catch (error) {
         console.error('Error loading live bets:', error);
-    }
-}
-
-function renderGamesBar(games) {
-    const container = document.getElementById('gamesBar');
-
-    if (!games || games.length === 0) {
-        container.innerHTML = '<div class="no-games">No games today</div>';
-        return;
-    }
-
-    container.innerHTML = games.map(game => {
-        const statusClass = game.status === 'Live' ? 'game-live' :
-                           game.status === 'Finished' ? 'game-final' : 'game-upcoming';
-        return `
-            <div class="game-chip ${statusClass}">
-                <span class="game-matchup">${game.game}</span>
-                <span class="game-score">${game.score}</span>
-                <span class="game-status">${game.status === 'Live' ? 'Q' + game.period : game.status}</span>
+        document.getElementById('gameCards').innerHTML = `
+            <div class="error-state">
+                <span>Failed to load data. Retrying...</span>
             </div>
         `;
-    }).join('');
+    }
 }
 
-function renderBets(bets) {
-    const container = document.getElementById('liveBets');
+function groupBetsByGame(bets, games) {
+    const grouped = {};
 
-    if (!bets || bets.length === 0) {
-        container.innerHTML = '<div class="no-bets">No bets for today</div>';
+    // Initialize with all games that have bets
+    games.forEach(game => {
+        const gameKey = game.game;
+        grouped[gameKey] = {
+            game: game,
+            bets: []
+        };
+    });
+
+    // Add "Unmatched" for bets without game info
+    grouped['Unmatched'] = {
+        game: null,
+        bets: []
+    };
+
+    // Group bets into their games
+    bets.forEach(bet => {
+        const gameKey = bet.game && bet.game !== '-' ? bet.game : 'Unmatched';
+        if (grouped[gameKey]) {
+            grouped[gameKey].bets.push(bet);
+        } else {
+            grouped['Unmatched'].bets.push(bet);
+        }
+    });
+
+    return grouped;
+}
+
+function renderGameCards(betsByGame, games) {
+    const container = document.getElementById('gameCards');
+
+    // Filter to only games with bets, sort by status (live first)
+    const gamesWithBets = Object.entries(betsByGame)
+        .filter(([key, data]) => data.bets.length > 0)
+        .sort((a, b) => {
+            const aLive = a[1].game?.status === 'Live' ? 0 : 1;
+            const bLive = b[1].game?.status === 'Live' ? 0 : 1;
+            return aLive - bLive;
+        });
+
+    if (gamesWithBets.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🏀</div>
+                <span class="empty-title">No bets tracking today</span>
+                <span class="empty-sub">Check back at gametime</span>
+            </div>
+        `;
         return;
     }
 
-    // Sort: live games first, then by status
-    const statusOrder = ['on_track', 'safe', 'needs_more', 'close', 'danger', 'hit', 'unlikely', 'busted', 'miss', 'not_started'];
-    bets.sort((a, b) => {
-        // Live first
-        if (a.game_status === 'Live' && b.game_status !== 'Live') return -1;
-        if (b.game_status === 'Live' && a.game_status !== 'Live') return 1;
-        // Then by status
-        return statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status);
-    });
-
-    container.innerHTML = bets.map(bet => renderBetCard(bet)).join('');
+    container.innerHTML = gamesWithBets.map(([gameKey, data]) =>
+        renderGameCard(gameKey, data.game, data.bets)
+    ).join('');
 }
 
-function renderBetCard(bet) {
-    const emoji = STATUS_EMOJI[bet.status] || '&#x2753;';
-    const colorClass = bet.status_color;
+function renderGameCard(gameKey, game, bets) {
+    const isLive = game?.status === 'Live';
+    const isFinished = game?.status === 'Finished';
 
-    // Calculate progress percentage
-    let progress = 0;
-    if (bet.current_pra !== null && bet.betting_line > 0) {
-        progress = Math.min(100, (bet.current_pra / bet.betting_line) * 100);
-    }
+    // Sort bets: hits first, then by current PRA
+    bets.sort((a, b) => {
+        if (a.status === 'hit' && b.status !== 'hit') return -1;
+        if (b.status === 'hit' && a.status !== 'hit') return 1;
+        return (b.current_pra || 0) - (a.current_pra || 0);
+    });
 
-    // For UNDER bets, invert the visual (full = safe)
-    const isUnder = bet.direction === 'UNDER';
-    const progressColor = isUnder ?
-        (progress > 100 ? 'var(--accent-red)' : 'var(--accent-green)') :
-        (progress >= 100 ? 'var(--accent-green)' : 'var(--accent-blue)');
-
-    const tierClass = bet.tier === 'GOLDEN' ? 'tier-golden' : 'tier-volatile';
+    const clockDisplay = game ? formatClock(game) : 'Not Started';
+    const awayTeam = game ? game.game.split(' @ ')[0] : '???';
+    const homeTeam = game ? game.game.split(' @ ')[1] : '???';
+    const awayScore = game ? game.score.split(' - ')[0] : '0';
+    const homeScore = game ? game.score.split(' - ')[1] : '0';
 
     return `
-        <div class="live-bet-card ${bet.game_status === 'Live' ? 'is-live' : ''} ${bet.game_status === 'Finished' ? 'is-finished' : ''}">
-            <div class="bet-header">
-                <div class="bet-player-info">
-                    <span class="bet-player-name">${bet.player_name}</span>
-                    <span class="bet-tier ${tierClass}">${bet.tier}</span>
+        <div class="game-card ${isLive ? 'is-live' : ''} ${isFinished ? 'is-finished' : ''}">
+            <!-- Card Header -->
+            <div class="card-header">
+                <div class="status-badge ${isLive ? 'live' : isFinished ? 'final' : 'upcoming'}">
+                    ${isLive ? '<span class="pulse-dot"></span>LIVE' : isFinished ? 'FINAL' : 'UPCOMING'}
                 </div>
-                <div class="bet-status ${colorClass}">
-                    <span class="status-emoji">${emoji}</span>
-                    <span class="status-text">${bet.status_text}</span>
+                <span class="clock">${clockDisplay}</span>
+            </div>
+
+            <!-- Scoreboard -->
+            <div class="scoreboard">
+                <div class="team away">
+                    <span class="team-name">${awayTeam}</span>
+                    <span class="team-score">${awayScore}</span>
+                </div>
+                <span class="vs">@</span>
+                <div class="team home">
+                    <span class="team-name">${homeTeam}</span>
+                    <span class="team-score">${homeScore}</span>
                 </div>
             </div>
 
-            <div class="bet-line-info">
-                <span class="bet-direction ${bet.direction.toLowerCase()}">${bet.direction}</span>
-                <span class="bet-line">${bet.betting_line}</span>
-                <span class="bet-prediction">Pred: ${bet.prediction || '-'}</span>
-            </div>
-
-            <div class="bet-progress-section">
-                <div class="progress-numbers">
-                    <span class="current-pra">${bet.current_pra !== null ? bet.current_pra : '-'}</span>
-                    <span class="progress-separator">/</span>
-                    <span class="target-line">${bet.betting_line}</span>
-                </div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: ${progress}%; background: ${progressColor}"></div>
-                    ${bet.direction === 'OVER' ? `<div class="progress-target" style="left: 100%"></div>` : ''}
-                </div>
-                <div class="progress-details">
-                    ${bet.distance !== null ?
-                        (bet.direction === 'OVER' ?
-                            `<span>Need: ${bet.distance > 0 ? bet.distance : 0}</span>` :
-                            `<span>Margin: ${bet.distance}</span>`)
-                        : ''}
-                    ${bet.projected_pra ? `<span>Proj: ${bet.projected_pra}</span>` : ''}
-                </div>
-            </div>
-
-            <div class="bet-game-info">
-                <span class="game-matchup">${bet.game}</span>
-                <span class="game-time">${bet.game_status === 'Live' ? `${bet.period} ${bet.game_time}` : bet.game_status}</span>
-                <span class="minutes-played">${bet.minutes_played} min</span>
+            <!-- Tracked Players -->
+            <div class="tracked-players">
+                <div class="section-label">TRACKED PLAYERS</div>
+                ${bets.map(bet => renderPlayerRow(bet)).join('')}
             </div>
         </div>
     `;
+}
+
+function renderPlayerRow(bet) {
+    const current = bet.current_pra !== null ? bet.current_pra : 0;
+    const line = bet.betting_line;
+    const direction = bet.direction;
+    const isGoldilocks = bet.tier === 'GOLDEN';
+
+    // Calculate progress
+    const progress = Math.min((current / line) * 100, 150);
+
+    // Determine status and colors
+    const statusInfo = getStatusInfo(bet);
+    const barColor = getBarColor(bet);
+
+    return `
+        <div class="player-row">
+            <div class="player-info">
+                <div class="player-name-row">
+                    <span class="player-name">${bet.player_name}</span>
+                    ${isGoldilocks ? '<span class="goldilocks-badge">GOLDILOCKS</span>' : ''}
+                    <span class="status-chip ${statusInfo.class}">${statusInfo.text}</span>
+                </div>
+                <div class="bet-details">
+                    <span class="direction ${direction.toLowerCase()}">${direction}</span>
+                    <span class="line">${line} PRA</span>
+                    ${bet.minutes_played ? `<span class="minutes">${bet.minutes_played} min</span>` : ''}
+                </div>
+            </div>
+            <div class="player-progress">
+                <div class="progress-value">
+                    <span class="current ${statusInfo.valueClass}">${current}</span>
+                    <span class="separator">/</span>
+                    <span class="target">${line}</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill ${barColor}" style="width: ${Math.min(progress, 100)}%"></div>
+                    ${direction === 'OVER' ? '<div class="progress-target-line"></div>' : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function formatClock(game) {
+    if (!game) return '-';
+    const status = game.status;
+    if (status === 'Finished') return 'Final';
+    if (status === 'Not Started') return 'Upcoming';
+
+    const period = game.period;
+    if (period === 0) return '-';
+    if (period <= 4) return `Q${period}`;
+    if (period === 5) return 'OT';
+    return `${period - 4}OT`;
+}
+
+function getStatusInfo(bet) {
+    const status = bet.status;
+    const statusMap = {
+        'hit': { text: 'HIT', class: 'hit', valueClass: 'text-hit' },
+        'on_track': { text: 'ON TRACK', class: 'on-track', valueClass: 'text-on-track' },
+        'safe': { text: 'SAFE', class: 'safe', valueClass: 'text-safe' },
+        'needs_more': { text: 'NEEDS MORE', class: 'warning', valueClass: 'text-warning' },
+        'close': { text: 'CLOSE', class: 'warning', valueClass: 'text-warning' },
+        'unlikely': { text: 'UNLIKELY', class: 'danger', valueClass: 'text-danger' },
+        'busted': { text: 'BUSTED', class: 'danger', valueClass: 'text-danger' },
+        'danger': { text: 'DANGER', class: 'danger', valueClass: 'text-danger' },
+        'miss': { text: 'MISS', class: 'danger', valueClass: 'text-danger' },
+        'not_started': { text: 'PENDING', class: 'pending', valueClass: '' },
+    };
+    return statusMap[status] || { text: status?.toUpperCase() || 'UNKNOWN', class: 'pending', valueClass: '' };
+}
+
+function getBarColor(bet) {
+    const status = bet.status;
+    if (status === 'hit' || status === 'safe') return 'bar-hit';
+    if (status === 'on_track') return 'bar-on-track';
+    if (status === 'needs_more' || status === 'close') return 'bar-warning';
+    if (status === 'unlikely' || status === 'busted' || status === 'danger' || status === 'miss') return 'bar-danger';
+    return 'bar-neutral';
 }
 
 // Initial load

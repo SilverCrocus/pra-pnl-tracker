@@ -314,318 +314,450 @@ tr:last-child td {
     color: white;
 }
 
-/* Live Page Styles */
-.live-summary {
+/* ========== LIVE PAGE - MODERN CARD DESIGN ========== */
+
+/* Summary Bar */
+.live-summary-bar {
     display: flex;
-    gap: 24px;
+    align-items: center;
+    gap: 32px;
+    padding: 16px 24px;
+    background: #151922;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
     margin-bottom: 24px;
-    flex-wrap: wrap;
 }
 
-.live-stat {
+.summary-stat {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 16px 24px;
-    background: var(--bg-card);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    min-width: 100px;
+    gap: 2px;
 }
 
-.live-stat-value {
-    font-size: 2rem;
+.stat-value {
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
 }
 
-.live-stat-label {
-    font-size: 0.75rem;
+.stat-label {
+    font-size: 0.65rem;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
+    font-weight: 600;
 }
 
-.live-pulse {
-    color: var(--accent-red);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* Games Bar */
-.games-bar {
+.live-indicator {
     display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding: 16px 0;
-    margin-bottom: 24px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.game-chip {
-    display: flex;
-    flex-direction: column;
     align-items: center;
-    padding: 12px 16px;
-    background: var(--bg-card);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    min-width: 120px;
-    flex-shrink: 0;
+    gap: 8px;
 }
 
-.game-chip.game-live {
-    border-color: var(--accent-red);
-    background: rgba(239, 68, 68, 0.1);
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
 }
 
-.game-chip.game-final {
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.9); }
+}
+
+.live-text {
+    color: #ef4444 !important;
+}
+
+.hit-text {
+    color: #22c55e !important;
+}
+
+.last-update-stat {
+    margin-left: auto;
+}
+
+/* Game Cards Container */
+.game-cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+}
+
+/* Game Card */
+.game-card {
+    width: 100%;
+    max-width: 420px;
+    background: #151922;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.game-card.is-live {
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.1);
+}
+
+.game-card.is-finished {
     opacity: 0.7;
 }
 
-.game-matchup {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.game-score {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 4px 0;
-}
-
-.game-status {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-}
-
-.game-chip.game-live .game-status {
-    color: var(--accent-red);
-    font-weight: 600;
-}
-
-/* Live Bets Grid */
-.live-bets-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-}
-
-.live-bet-card {
-    background: var(--bg-card);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    padding: 16px;
-    transition: all 0.2s;
-}
-
-.live-bet-card.is-live {
-    border-color: var(--accent-blue);
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
-}
-
-.live-bet-card.is-finished {
-    opacity: 0.8;
-}
-
-.bet-header {
+/* Card Header */
+.card-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
+    align-items: center;
+    padding: 12px 16px;
+    background: #1B1F2A;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.bet-player-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.bet-player-name {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.bet-tier {
-    font-size: 0.625rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 600;
-    width: fit-content;
-}
-
-.tier-golden {
-    background: rgba(234, 179, 8, 0.2);
-    color: var(--accent-yellow);
-}
-
-.tier-volatile {
-    background: rgba(59, 130, 246, 0.2);
-    color: var(--accent-blue);
-}
-
-.bet-status {
+.status-badge {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.875rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
 }
 
-.bet-status.green {
-    background: rgba(34, 197, 94, 0.2);
-    color: var(--accent-green);
+.status-badge.live {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
 }
 
-.bet-status.yellow {
-    background: rgba(234, 179, 8, 0.2);
-    color: var(--accent-yellow);
+.status-badge.final {
+    background: rgba(113, 113, 122, 0.15);
+    border: 1px solid rgba(113, 113, 122, 0.3);
+    color: #a1a1aa;
 }
 
-.bet-status.red {
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--accent-red);
+.status-badge.upcoming {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
 }
 
-.bet-status.gray {
-    background: rgba(113, 113, 122, 0.2);
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    background: #ef4444;
+    border-radius: 50%;
+    animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.clock {
+    font-size: 0.75rem;
+    font-family: 'SF Mono', 'Monaco', monospace;
     color: var(--text-muted);
 }
 
-.status-emoji {
-    font-size: 1rem;
+/* Scoreboard */
+.scoreboard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 32px;
 }
 
-.bet-line-info {
+.team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.team-name {
+    font-size: 1.25rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: #9ca3af;
+}
+
+.team.home .team-name {
+    color: #60a5fa;
+}
+
+.team-score {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.vs {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #4b5563;
+    padding-bottom: 24px;
+}
+
+/* Tracked Players Section */
+.tracked-players {
+    background: #11131a;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 12px 16px;
+}
+
+.section-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #4b5563;
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+}
+
+/* Player Row */
+.player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    gap: 12px;
+}
+
+.player-row:last-child {
+    border-bottom: none;
+}
+
+.player-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.player-name-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-.bet-direction {
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 4px 8px;
-    border-radius: 4px;
-}
-
-.bet-direction.over {
-    background: rgba(34, 197, 94, 0.2);
-    color: var(--accent-green);
-}
-
-.bet-direction.under {
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--accent-red);
-}
-
-.bet-line {
-    font-size: 1.5rem;
-    font-weight: 700;
+.player-name {
+    font-size: 0.875rem;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
-.bet-prediction {
-    font-size: 0.75rem;
+.goldilocks-badge {
+    font-size: 0.5rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    letter-spacing: 0.05em;
+}
+
+.status-chip {
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+}
+
+.status-chip.hit, .status-chip.safe {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #4ade80;
+}
+
+.status-chip.on-track {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #4ade80;
+}
+
+.status-chip.warning {
+    background: rgba(234, 179, 8, 0.2);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    color: #facc15;
+}
+
+.status-chip.danger {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+}
+
+.status-chip.pending {
+    background: rgba(113, 113, 122, 0.15);
+    border: 1px solid rgba(113, 113, 122, 0.3);
+    color: #a1a1aa;
+}
+
+.bet-details {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.direction {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+}
+
+.direction.over {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+
+.direction.under {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.line {
+    font-size: 0.7rem;
     color: var(--text-muted);
+    font-family: 'SF Mono', 'Monaco', monospace;
 }
 
-.bet-progress-section {
-    margin-bottom: 12px;
+.minutes {
+    font-size: 0.65rem;
+    color: #6b7280;
 }
 
-.progress-numbers {
+/* Player Progress */
+.player-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 90px;
+}
+
+.progress-value {
     display: flex;
     align-items: baseline;
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: 2px;
 }
 
-.current-pra {
-    font-size: 2rem;
+.progress-value .current {
+    font-size: 1.125rem;
     font-weight: 700;
     color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
 }
 
-.progress-separator {
-    font-size: 1.5rem;
+.progress-value .separator {
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.progress-value .target {
+    font-size: 0.75rem;
     color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
 }
 
-.target-line {
-    font-size: 1.25rem;
-    color: var(--text-secondary);
-}
+.text-hit { color: #4ade80 !important; }
+.text-on-track { color: #4ade80 !important; }
+.text-safe { color: #4ade80 !important; }
+.text-warning { color: #facc15 !important; }
+.text-danger { color: #f87171 !important; }
 
-.progress-bar-container {
-    position: relative;
-    height: 8px;
-    background: var(--bg-secondary);
-    border-radius: 4px;
+/* Progress Bar */
+.progress-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
     overflow: hidden;
-    margin-bottom: 8px;
+    position: relative;
 }
 
-.progress-bar {
+.progress-bar-fill {
     height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease;
+    border-radius: 2px;
+    transition: width 0.5s ease;
 }
 
-.progress-target {
+.progress-target-line {
     position: absolute;
+    right: 0;
     top: 0;
     width: 2px;
     height: 100%;
-    background: var(--text-muted);
+    background: rgba(255, 255, 255, 0.3);
 }
 
-.progress-details {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--text-muted);
+.bar-hit {
+    background: linear-gradient(90deg, #22c55e, #4ade80);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
 }
 
-.bet-game-info {
+.bar-on-track {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.bar-warning {
+    background: linear-gradient(90deg, #eab308, #facc15);
+}
+
+.bar-danger {
+    background: linear-gradient(90deg, #dc2626, #ef4444);
+}
+
+.bar-neutral {
+    background: #4b5563;
+}
+
+/* Empty & Loading States */
+.empty-state, .loading-state, .error-state {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-color);
-    font-size: 0.75rem;
+    justify-content: center;
+    padding: 64px 24px;
     color: var(--text-muted);
+    gap: 12px;
+    width: 100%;
 }
 
-.bet-game-info .game-time {
-    color: var(--text-secondary);
+.empty-icon {
+    font-size: 3rem;
+    opacity: 0.3;
+}
+
+.empty-title {
+    font-size: 1.125rem;
     font-weight: 500;
+    color: var(--text-secondary);
 }
 
-.no-bets, .no-games {
-    text-align: center;
-    padding: 48px;
-    color: var(--text-muted);
-    font-size: 1rem;
+.empty-sub {
+    font-size: 0.875rem;
 }
 
-.last-update {
-    text-align: center;
-    padding: 16px;
-    color: var(--text-muted);
-    font-size: 0.75rem;
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 /* Responsive */
@@ -650,5 +782,53 @@ tr:last-child td {
 
     .chart-wrapper {
         height: 250px;
+    }
+
+    /* Live page responsive */
+    .live-summary-bar {
+        flex-wrap: wrap;
+        gap: 16px;
+        padding: 12px 16px;
+    }
+
+    .summary-stat {
+        min-width: 60px;
+    }
+
+    .last-update-stat {
+        width: 100%;
+        margin-left: 0;
+        text-align: center;
+    }
+
+    .game-card {
+        max-width: 100%;
+    }
+
+    .scoreboard {
+        padding: 16px 20px;
+    }
+
+    .team-name {
+        font-size: 1rem;
+    }
+
+    .team-score {
+        font-size: 2rem;
+    }
+
+    .player-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .player-progress {
+        width: 100%;
+        align-items: flex-start;
+    }
+
+    .progress-bar-bg {
+        width: 100%;
     }
 }
