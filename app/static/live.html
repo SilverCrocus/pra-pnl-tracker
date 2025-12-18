@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Tracker - Goldilocks V2</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Nav -->
+        <header>
+            <h1>Goldilocks <span>V2</span> Live</h1>
+            <nav class="nav-tabs">
+                <a href="/" class="nav-tab">Performance</a>
+                <a href="/live" class="nav-tab active">Live</a>
+            </nav>
+        </header>
+
+        <!-- Live Summary -->
+        <div class="live-summary">
+            <div class="live-stat">
+                <span class="live-stat-value" id="totalBets">0</span>
+                <span class="live-stat-label">Bets Today</span>
+            </div>
+            <div class="live-stat">
+                <span class="live-stat-value live-pulse" id="liveCount">0</span>
+                <span class="live-stat-label">Live Now</span>
+            </div>
+            <div class="live-stat">
+                <span class="live-stat-value positive" id="hitsCount">0</span>
+                <span class="live-stat-label">Hits</span>
+            </div>
+            <div class="live-stat">
+                <span class="live-stat-value" id="pendingCount">0</span>
+                <span class="live-stat-label">Pending</span>
+            </div>
+        </div>
+
+        <!-- Games Scoreboard -->
+        <div class="games-bar" id="gamesBar">
+            <div class="loading">Loading games...</div>
+        </div>
+
+        <!-- Bet Cards -->
+        <div class="live-bets-grid" id="liveBets">
+            <div class="loading">Loading bets...</div>
+        </div>
+
+        <!-- Last Update -->
+        <div class="last-update" id="lastUpdate">
+            Updating every 5 seconds...
+        </div>
+    </div>
+
+    <script src="/static/live.js"></script>
+</body>
+</html>

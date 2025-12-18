@@ -289,6 +289,345 @@ tr:last-child td {
     color: var(--text-muted);
 }
 
+/* Navigation */
+.nav-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-tab {
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.nav-tab:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.nav-tab.active {
+    background: var(--accent-blue);
+    color: white;
+}
+
+/* Live Page Styles */
+.live-summary {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.live-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 24px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    min-width: 100px;
+}
+
+.live-stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.live-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.live-pulse {
+    color: var(--accent-red);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Games Bar */
+.games-bar {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 16px 0;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.game-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.game-chip.game-live {
+    border-color: var(--accent-red);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.game-chip.game-final {
+    opacity: 0.7;
+}
+
+.game-matchup {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.game-score {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 4px 0;
+}
+
+.game-status {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.game-chip.game-live .game-status {
+    color: var(--accent-red);
+    font-weight: 600;
+}
+
+/* Live Bets Grid */
+.live-bets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.live-bet-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    transition: all 0.2s;
+}
+
+.live-bet-card.is-live {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+.live-bet-card.is-finished {
+    opacity: 0.8;
+}
+
+.bet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.bet-player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bet-player-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.bet-tier {
+    font-size: 0.625rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.tier-golden {
+    background: rgba(234, 179, 8, 0.2);
+    color: var(--accent-yellow);
+}
+
+.tier-volatile {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--accent-blue);
+}
+
+.bet-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.bet-status.green {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--accent-green);
+}
+
+.bet-status.yellow {
+    background: rgba(234, 179, 8, 0.2);
+    color: var(--accent-yellow);
+}
+
+.bet-status.red {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-red);
+}
+
+.bet-status.gray {
+    background: rgba(113, 113, 122, 0.2);
+    color: var(--text-muted);
+}
+
+.status-emoji {
+    font-size: 1rem;
+}
+
+.bet-line-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.bet-direction {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.bet-direction.over {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--accent-green);
+}
+
+.bet-direction.under {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-red);
+}
+
+.bet-line {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.bet-prediction {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.bet-progress-section {
+    margin-bottom: 12px;
+}
+
+.progress-numbers {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.current-pra {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.progress-separator {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+}
+
+.target-line {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.progress-bar-container {
+    position: relative;
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-target {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--text-muted);
+}
+
+.progress-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.bet-game-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.bet-game-info .game-time {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.no-bets, .no-games {
+    text-align: center;
+    padding: 48px;
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.last-update {
+    text-align: center;
+    padding: 16px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .container {

@@ -276,6 +276,117 @@ async def recalculate_summaries(db: Session):
     db.commit()
 
 
+@router.get("/live-bets")
+async def get_live_bets(db: Session = Depends(get_db)):
+    """Get today's bets with live tracking status."""
+    from datetime import date as date_module
+    from zoneinfo import ZoneInfo
+    from app.services.live_tracker import live_tracker
+
+    # Get today's date in Eastern time (NBA schedule timezone)
+    eastern = ZoneInfo('America/New_York')
+    today = datetime.now(eastern).date()
+
+    # Get today's bets from database
+    todays_bets = db.query(Bet).filter(
+        Bet.game_date == today
+    ).all()
+
+    if not todays_bets:
+        return {"bets": [], "games": [], "summary": {"total": 0, "live": 0, "hits": 0, "pending": 0}}
+
+    # Get live stats from NBA API
+    try:
+        live_stats, games = live_tracker.get_all_live_stats()
+    except Exception as e:
+        live_stats = {}
+        games = []
+
+    # Merge bets with live stats
+    result = []
+    hits = 0
+    live_count = 0
+    pending = 0
+
+    for bet in todays_bets:
+        player_stats = live_stats.get(bet.player_id, {})
+
+        current_pra = player_stats.get('current_pra')
+        minutes_raw = player_stats.get('minutes', 0)
+        minutes_played = live_tracker.parse_minutes(minutes_raw)
+        game_status = player_stats.get('game_status', 'Not Started')
+
+        # Calculate tracking status
+        status_info = live_tracker.calculate_tracking_status(
+            current_pra=current_pra,
+            line=bet.betting_line,
+            direction=bet.direction,
+            minutes_played=minutes_played,
+            game_status=game_status
+        )
+
+        # Count stats
+        if status_info['status'] == 'hit':
+            hits += 1
+        if game_status == 'Live':
+            live_count += 1
+        if game_status == 'Not Started':
+            pending += 1
+
+        # Format period display
+        period = player_stats.get('period', 0)
+        if period == 0:
+            period_text = "-"
+        elif period <= 4:
+            period_text = f"Q{period}"
+        elif period == 5:
+            period_text = "OT"
+        else:
+            period_text = f"{period - 4}OT"
+
+        result.append({
+            "player_name": bet.player_name,
+            "player_id": bet.player_id,
+            "betting_line": bet.betting_line,
+            "direction": bet.direction,
+            "tier": bet.tier,
+            "prediction": round(bet.prediction, 1) if bet.prediction else None,
+            "current_pra": current_pra,
+            "minutes_played": f"{minutes_played:.1f}" if minutes_played else "0:00",
+            "projected_pra": round(status_info['projected'], 1) if status_info['projected'] else None,
+            "game": player_stats.get('game', '-'),
+            "period": period_text,
+            "game_time": player_stats.get('game_time', '-'),
+            "game_status": game_status,
+            "status": status_info['status'],
+            "status_text": status_info['status_text'],
+            "status_color": status_info['status_color'],
+            "distance": round(status_info['distance'], 1) if status_info['distance'] is not None else None,
+        })
+
+    # Format games for display
+    games_summary = [
+        {
+            "game": f"{g['away_team']} @ {g['home_team']}",
+            "score": f"{g['away_score']} - {g['home_score']}",
+            "status": g['status_text'],
+            "period": g['period'],
+        }
+        for g in games
+    ]
+
+    return {
+        "bets": result,
+        "games": games_summary,
+        "summary": {
+            "total": len(todays_bets),
+            "live": live_count,
+            "hits": hits,
+            "pending": pending,
+        }
+    }
+
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint for Render."""

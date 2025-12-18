@@ -37,6 +37,15 @@ async def root():
     return {"message": "Goldilocks V2 PnL Tracker API", "docs": "/docs"}
 
 
+@app.get("/live")
+async def live_page():
+    """Serve the live tracking HTML."""
+    live_path = static_dir / "live.html"
+    if live_path.exists():
+        return FileResponse(str(live_path))
+    return {"message": "Live tracking page not found"}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
