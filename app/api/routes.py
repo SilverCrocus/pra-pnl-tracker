@@ -293,11 +293,11 @@ async def get_live_bets(db: Session = Depends(get_db)):
     ).all()
 
     if not todays_bets:
-        return {"bets": [], "games": [], "summary": {"total": 0, "live": 0, "hits": 0, "pending": 0}}
+        return {"bets": [], "games": [], "summary": {"total": 0, "live": 0, "hits": 0, "pending": 0}, "tracking_state": "no_bets", "date": today.isoformat()}
 
-    # Get live stats from NBA API
+    # Get live stats from NBA API - filter to only today's games
     try:
-        live_stats, games = live_tracker.get_all_live_stats()
+        live_stats, games = live_tracker.get_all_live_stats(filter_date=today.isoformat())
     except Exception as e:
         live_stats = {}
         games = []
@@ -431,7 +431,7 @@ async def get_todays_bets(db: Session = Depends(get_db)):
     player_to_game = {}
 
     try:
-        live_games = live_tracker.get_live_games()
+        live_games = live_tracker.get_live_games(filter_date=today.isoformat())
         for game in live_games:
             game_key = f"{game['away_team']}@{game['home_team']}"
             games.append({

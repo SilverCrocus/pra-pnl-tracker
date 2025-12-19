@@ -15,11 +15,23 @@ logger = logging.getLogger(__name__)
 class LiveTracker:
     """Tracks live PRA stats for NBA players."""
 
-    def get_live_games(self) -> List[Dict]:
-        """Get all games happening today."""
+    def get_live_games(self, filter_date: str = None) -> List[Dict]:
+        """Get all games happening today.
+
+        Args:
+            filter_date: Optional date string (YYYY-MM-DD) to filter games.
+                        If provided, only returns games matching this date.
+        """
         try:
             board = scoreboard.ScoreBoard()
-            games_data = board.get_dict()['scoreboard']['games']
+            scoreboard_data = board.get_dict()['scoreboard']
+            games_data = scoreboard_data['games']
+
+            # Check if the scoreboard date matches our expected date
+            api_game_date = scoreboard_data.get('gameDate', '')
+            if filter_date and api_game_date != filter_date:
+                logger.info(f"API game date {api_game_date} doesn't match filter {filter_date}, returning empty")
+                return []
 
             games = []
             for g in games_data:
@@ -86,9 +98,13 @@ class LiveTracker:
             logger.error(f"Error fetching player stats for game {game_id}: {e}")
             return pd.DataFrame()
 
-    def get_all_live_stats(self) -> Dict[str, Dict]:
-        """Get live stats for all players keyed by player_id."""
-        games = self.get_live_games()
+    def get_all_live_stats(self, filter_date: str = None) -> Dict[str, Dict]:
+        """Get live stats for all players keyed by player_id.
+
+        Args:
+            filter_date: Optional date string (YYYY-MM-DD) to filter games.
+        """
+        games = self.get_live_games(filter_date=filter_date)
         active_games = [g for g in games if g['status'] in [2, 3]]
 
         all_stats = {}
