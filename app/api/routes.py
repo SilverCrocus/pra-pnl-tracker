@@ -375,6 +375,20 @@ async def get_live_bets(db: Session = Depends(get_db)):
         for g in games
     ]
 
+    # Determine tracking state
+    finished_count = sum(1 for b in result if b['game_status'] == 'Finished')
+    all_finished = finished_count == len(result) and finished_count > 0
+    all_pending = pending == len(result)
+
+    if all_finished:
+        tracking_state = "complete"
+    elif all_pending:
+        tracking_state = "upcoming"
+    elif live_count > 0:
+        tracking_state = "live"
+    else:
+        tracking_state = "mixed"
+
     return {
         "bets": result,
         "games": games_summary,
@@ -383,7 +397,10 @@ async def get_live_bets(db: Session = Depends(get_db)):
             "live": live_count,
             "hits": hits,
             "pending": pending,
-        }
+            "finished": finished_count,
+        },
+        "tracking_state": tracking_state,
+        "date": today.isoformat(),
     }
 
 

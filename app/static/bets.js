@@ -81,22 +81,25 @@ function renderGameCard(game) {
     const betCount = game.bets.length;
     const totalUnits = game.bets.reduce((sum, b) => sum + b.tier_units, 0);
 
-    // Handle unknown game
+    // Handle unknown game (games not yet started)
     const isUnknown = game.game_key === 'Unknown';
     const matchupHtml = isUnknown
-        ? `<span class="team-away">Multiple Games</span>`
+        ? `<span class="team-away">Upcoming Games</span>`
         : `<span class="team-away">${awayTeam}</span>
            <span class="at-symbol">@</span>
            <span class="team-home">${homeTeam}</span>`;
 
+    const cardClass = isUnknown ? 'game-card upcoming-card' : 'game-card';
+
     return `
-        <div class="game-card">
+        <div class="${cardClass}">
             <div class="game-header">
                 <div class="matchup">
                     ${matchupHtml}
                 </div>
                 <span class="bet-count">${betCount} bet${betCount !== 1 ? 's' : ''} · ${totalUnits}u</span>
             </div>
+            ${isUnknown ? '<div class="upcoming-note">Games haven\'t started yet - players will be grouped by game once live</div>' : ''}
             <div class="players-list">
                 ${game.bets.map(bet => renderPlayerRow(bet)).join('')}
             </div>

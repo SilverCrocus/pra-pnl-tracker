@@ -12,6 +12,60 @@ async function loadLiveBets() {
         document.getElementById('pendingCount').textContent = data.summary.pending;
         document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
 
+        // Handle different tracking states
+        const container = document.getElementById('gameCards');
+
+        if (data.summary.total === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🏀</div>
+                    <span class="empty-title">No bets for today</span>
+                    <span class="empty-sub">Check back when new bets are generated</span>
+                </div>
+            `;
+            return;
+        }
+
+        if (data.tracking_state === 'complete') {
+            // All games finished - show summary instead of live tracking
+            const wins = data.bets.filter(b => b.status === 'hit').length;
+            const losses = data.bets.filter(b => b.status === 'miss').length;
+            container.innerHTML = `
+                <div class="complete-state">
+                    <div class="complete-icon">✅</div>
+                    <span class="complete-title">Tracking Complete</span>
+                    <span class="complete-date">${formatDate(data.date)}</span>
+                    <div class="complete-summary">
+                        <div class="complete-stat">
+                            <span class="stat-value text-hit">${wins}</span>
+                            <span class="stat-label">Hits</span>
+                        </div>
+                        <div class="complete-stat">
+                            <span class="stat-value text-danger">${losses}</span>
+                            <span class="stat-label">Misses</span>
+                        </div>
+                        <div class="complete-stat">
+                            <span class="stat-value">${data.summary.total}</span>
+                            <span class="stat-label">Total</span>
+                        </div>
+                    </div>
+                    <span class="complete-sub">All games have finished. Results synced to Performance page.</span>
+                </div>
+            `;
+            return;
+        }
+
+        if (data.tracking_state === 'upcoming') {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⏳</div>
+                    <span class="empty-title">Games Starting Soon</span>
+                    <span class="empty-sub">${data.summary.pending} bets ready to track</span>
+                </div>
+            `;
+            return;
+        }
+
         // Group bets by game
         const betsByGame = groupBetsByGame(data.bets, data.games);
 
@@ -26,6 +80,15 @@ async function loadLiveBets() {
             </div>
         `;
     }
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+    });
 }
 
 function groupBetsByGame(bets, games) {
