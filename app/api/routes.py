@@ -391,6 +391,7 @@ async def get_live_bets(db: Session = Depends(get_db)):
 async def get_todays_bets(db: Session = Depends(get_db)):
     """Get today's bet recommendations organized by game."""
     from zoneinfo import ZoneInfo
+    from app.services.live_tracker import live_tracker
 
     # Get today's date in Eastern time (NBA schedule timezone)
     eastern = ZoneInfo('America/New_York')
@@ -408,15 +409,50 @@ async def get_todays_bets(db: Session = Depends(get_db)):
             "summary": {"total_bets": 0, "total_units": 0, "games_count": 0}
         }
 
-    # Group bets - for now just return as a list since we don't have game info
-    # The frontend can group by player team if needed
-    bets_list = []
+    # Get today's games and player-team mapping
+    games = []
+    player_to_game = {}
+
+    try:
+        live_games = live_tracker.get_live_games()
+        for game in live_games:
+            game_key = f"{game['away_team']}@{game['home_team']}"
+            games.append({
+                "game_key": game_key,
+                "away_team": game['away_team'],
+                "home_team": game['home_team'],
+                "status": game['status_text'],
+            })
+
+            # Get player stats to map players to games
+            try:
+                player_stats = live_tracker.get_player_stats(game['game_id'])
+                if not player_stats.empty:
+                    for _, row in player_stats.iterrows():
+                        player_to_game[row['player_id']] = {
+                            "game_key": game_key,
+                            "team": row['team'],
+                            "away_team": game['away_team'],
+                            "home_team": game['home_team'],
+                        }
+            except:
+                pass
+    except Exception as e:
+        pass  # Continue without game data if API fails
+
+    # Build bets with game info
+    games_dict = {}
     total_units = 0
 
     for bet in todays_bets:
-        bets_list.append({
+        game_info = player_to_game.get(bet.player_id, {})
+        game_key = game_info.get("game_key", "Unknown")
+        team = game_info.get("team", "")
+
+        bet_data = {
             "player_name": bet.player_name,
             "player_id": bet.player_id,
+            "team": team,
             "betting_line": bet.betting_line,
             "direction": bet.direction,
             "tier": bet.tier,
@@ -425,15 +461,29 @@ async def get_todays_bets(db: Session = Depends(get_db)):
             "probability": round(bet.twostage_prob * 100, 1) if bet.twostage_prob else None,
             "result": bet.result,
             "actual_pra": bet.actual_pra,
-        })
+        }
+
+        if game_key not in games_dict:
+            games_dict[game_key] = {
+                "game_key": game_key,
+                "away_team": game_info.get("away_team", ""),
+                "home_team": game_info.get("home_team", ""),
+                "bets": []
+            }
+
+        games_dict[game_key]["bets"].append(bet_data)
         total_units += bet.tier_units
+
+    # Sort games by number of bets (most bets first)
+    sorted_games = sorted(games_dict.values(), key=lambda x: len(x["bets"]), reverse=True)
 
     return {
         "date": today.isoformat(),
-        "bets": bets_list,
+        "games": sorted_games,
         "summary": {
-            "total_bets": len(bets_list),
+            "total_bets": len(todays_bets),
             "total_units": round(total_units, 1),
+            "games_count": len([g for g in sorted_games if g["game_key"] != "Unknown"])
         }
     }
 

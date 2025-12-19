@@ -1,6 +1,6 @@
 /**
  * Today's Bets Page JavaScript
- * Fetches and displays today's betting recommendations
+ * Fetches and displays today's betting recommendations grouped by game
  */
 
 async function fetchTodaysBets() {
@@ -44,52 +44,25 @@ function formatTierName(tier) {
     return nameMap[tier] || tier;
 }
 
-function groupBetsByTier(bets) {
-    const groups = {};
-
-    bets.forEach(bet => {
-        const tier = bet.tier || 'OTHER';
-        if (!groups[tier]) {
-            groups[tier] = [];
-        }
-        groups[tier].push(bet);
-    });
-
-    // Sort by tier priority
-    const tierOrder = ['GOLDEN', 'HIGH_VOLATILITY', 'PROB_SWEET_SPOT', 'STD_SWEET_SPOT', 'OTHER'];
-    const sortedGroups = {};
-
-    tierOrder.forEach(tier => {
-        if (groups[tier]) {
-            sortedGroups[tier] = groups[tier];
-        }
-    });
-
-    return sortedGroups;
-}
-
-function renderBetRow(bet) {
+function renderPlayerRow(bet) {
     const directionClass = bet.direction === 'OVER' ? 'direction-over' : 'direction-under';
     const tierClass = getTierClass(bet.tier);
 
-    let resultBadge = '';
-    if (bet.result === 'WON') {
-        resultBadge = '<span class="result-badge won">WON</span>';
-    } else if (bet.result === 'LOST') {
-        resultBadge = '<span class="result-badge lost">LOST</span>';
-    } else if (bet.result === 'VOIDED') {
-        resultBadge = '<span class="result-badge voided">VOIDED</span>';
-    }
+    const teamBadge = bet.team ? `<span class="team-badge">${bet.team}</span>` : '';
+    const probText = bet.probability ? `${bet.probability}% prob` : '';
 
     return `
-        <div class="bet-row">
-            <div class="player-info" data-line="${bet.direction} ${bet.betting_line}">
+        <div class="player-row">
+            <div class="player-info">
                 <span class="player-name">${bet.player_name}</span>
-                ${bet.probability ? `<span class="probability">${bet.probability}% prob</span>` : ''}
+                <div class="player-meta">
+                    ${teamBadge}
+                    <span>${probText}</span>
+                </div>
             </div>
             <div class="bet-line">
                 <div class="line-value">${bet.betting_line}</div>
-                <div class="line-label">PRA Line</div>
+                <div class="line-label">Line</div>
             </div>
             <div class="bet-direction ${directionClass}">
                 ${bet.direction}
@@ -97,28 +70,35 @@ function renderBetRow(bet) {
             <div class="bet-tier">
                 <span class="tier-badge ${tierClass}">${formatTierName(bet.tier)}</span>
                 <span class="units">${bet.tier_units}u</span>
-                ${resultBadge}
             </div>
         </div>
     `;
 }
 
-function renderTierGroup(tier, bets) {
-    const tierClass = getTierClass(tier);
-    const tierName = formatTierName(tier);
-    const totalUnits = bets.reduce((sum, b) => sum + b.tier_units, 0);
+function renderGameCard(game) {
+    const awayTeam = game.away_team || '???';
+    const homeTeam = game.home_team || '???';
+    const betCount = game.bets.length;
+    const totalUnits = game.bets.reduce((sum, b) => sum + b.tier_units, 0);
+
+    // Handle unknown game
+    const isUnknown = game.game_key === 'Unknown';
+    const matchupHtml = isUnknown
+        ? `<span class="team-away">Multiple Games</span>`
+        : `<span class="team-away">${awayTeam}</span>
+           <span class="at-symbol">@</span>
+           <span class="team-home">${homeTeam}</span>`;
 
     return `
         <div class="game-card">
             <div class="game-header">
                 <div class="matchup">
-                    <span class="tier-badge ${tierClass}">${tierName}</span>
-                    <span class="team-home">${bets.length} bets</span>
+                    ${matchupHtml}
                 </div>
-                <div class="game-time">${totalUnits} units</div>
+                <span class="bet-count">${betCount} bet${betCount !== 1 ? 's' : ''} · ${totalUnits}u</span>
             </div>
-            <div class="bets-list">
-                ${bets.map(bet => renderBetRow(bet)).join('')}
+            <div class="players-list">
+                ${game.bets.map(bet => renderPlayerRow(bet)).join('')}
             </div>
         </div>
     `;
@@ -152,26 +132,21 @@ async function initBetsPage() {
     document.getElementById('betsDate').textContent = formatDate(data.date);
     document.getElementById('totalBets').textContent = data.summary.total_bets;
     document.getElementById('totalUnits').textContent = data.summary.total_units;
+    document.getElementById('gamesCount').textContent = data.summary.games_count || data.games.length;
 
-    // Count unique games (for now, count unique tiers as proxy)
-    const bets = data.bets || [];
-    const uniqueTiers = new Set(bets.map(b => b.tier)).size;
-    document.getElementById('gamesCount').textContent = uniqueTiers;
-
-    // Render bets
+    // Render games
     const container = document.getElementById('gamesContainer');
+    const games = data.games || [];
 
-    if (bets.length === 0) {
+    if (games.length === 0) {
         container.innerHTML = renderNoBets();
         return;
     }
 
-    // Group by tier and render
-    const groupedBets = groupBetsByTier(bets);
+    // Render game cards
     let html = '';
-
-    for (const [tier, tierBets] of Object.entries(groupedBets)) {
-        html += renderTierGroup(tier, tierBets);
+    for (const game of games) {
+        html += renderGameCard(game);
     }
 
     container.innerHTML = html;
