@@ -19,7 +19,7 @@ echo "Copied $COUNT CSV files"
 
 # Git add, commit, push
 cd "$TRACKER_DIR"
-git add data/goldilocks_v2_*.csv
+git add -f data/goldilocks_v2_*.csv
 
 if git diff --staged --quiet; then
     echo "No changes to commit"
