@@ -53,50 +53,49 @@
             letter-spacing: 0.05em;
         }
 
-        .games-grid {
+        .teams-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 1rem;
             max-width: 1400px;
             margin: 1.5rem auto;
             padding: 0 1rem;
         }
 
-        .game-card {
+        .team-card {
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
         }
 
-        .game-header {
+        .team-card.unknown-card {
+            border-color: rgba(239, 68, 68, 0.3);
+            opacity: 0.7;
+        }
+
+        .team-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 1.25rem;
-            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            padding: 0.85rem 1.25rem;
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(96, 165, 250, 0.05) 100%);
             border-bottom: 1px solid var(--border);
         }
 
-        .matchup {
+        .team-name-display {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+
+        .team-icon {
+            font-size: 1rem;
+        }
+
+        .team-abbrev {
             font-weight: 700;
-            font-size: 1.1rem;
-        }
-
-        .team-away {
-            color: var(--text-secondary);
-        }
-
-        .at-symbol {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-weight: 400;
-        }
-
-        .team-home {
+            font-size: 1.2rem;
             color: #60a5fa;
         }
 
@@ -241,23 +240,6 @@
             grid-column: 1 / -1;
         }
 
-        .upcoming-card {
-            border-color: rgba(245, 158, 11, 0.3);
-            background: rgba(245, 158, 11, 0.03);
-        }
-
-        .upcoming-card .game-header {
-            background: rgba(245, 158, 11, 0.1);
-        }
-
-        .upcoming-note {
-            padding: 0.5rem 1.25rem;
-            font-size: 0.75rem;
-            color: #f59e0b;
-            background: rgba(245, 158, 11, 0.1);
-            border-bottom: 1px solid var(--border);
-        }
-
         .no-bets-icon {
             font-size: 3rem;
             margin-bottom: 1rem;
@@ -272,7 +254,7 @@
         }
 
         @media (max-width: 500px) {
-            .games-grid {
+            .teams-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -284,7 +266,7 @@
                 display: none;
             }
 
-            .matchup {
+            .team-abbrev {
                 font-size: 1rem;
             }
         }
@@ -313,13 +295,13 @@
                     <div class="summary-label">Units</div>
                 </div>
                 <div class="summary-item">
-                    <div class="summary-value" id="gamesCount">-</div>
-                    <div class="summary-label">Games</div>
+                    <div class="summary-value" id="teamsCount">-</div>
+                    <div class="summary-label">Teams</div>
                 </div>
             </div>
         </div>
 
-        <div class="games-grid" id="gamesContainer">
+        <div class="teams-grid" id="teamsContainer">
             <div class="loading">Loading today's bets...</div>
         </div>
     </main>

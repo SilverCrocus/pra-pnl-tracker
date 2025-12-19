@@ -406,9 +406,9 @@ async def get_live_bets(db: Session = Depends(get_db)):
 
 @router.get("/todays-bets")
 async def get_todays_bets(db: Session = Depends(get_db)):
-    """Get today's bet recommendations organized by game."""
+    """Get today's bet recommendations organized by team."""
     from zoneinfo import ZoneInfo
-    from app.services.live_tracker import live_tracker
+    from app.services.team_lookup import get_player_team_map
 
     # Get today's date in Eastern time (NBA schedule timezone)
     eastern = ZoneInfo('America/New_York')
@@ -422,54 +422,27 @@ async def get_todays_bets(db: Session = Depends(get_db)):
     if not todays_bets:
         return {
             "date": today.isoformat(),
-            "games": [],
-            "summary": {"total_bets": 0, "total_units": 0, "games_count": 0}
+            "teams": [],
+            "summary": {"total_bets": 0, "total_units": 0, "teams_count": 0}
         }
 
-    # Get today's games and player-team mapping
-    games = []
-    player_to_game = {}
-
+    # Get player-to-team mapping from NBA API
+    player_team_map = {}
     try:
-        live_games = live_tracker.get_live_games(filter_date=today.isoformat())
-        for game in live_games:
-            game_key = f"{game['away_team']}@{game['home_team']}"
-            games.append({
-                "game_key": game_key,
-                "away_team": game['away_team'],
-                "home_team": game['home_team'],
-                "status": game['status_text'],
-            })
-
-            # Get player stats to map players to games
-            try:
-                player_stats = live_tracker.get_player_stats(game['game_id'])
-                if not player_stats.empty:
-                    for _, row in player_stats.iterrows():
-                        player_to_game[row['player_id']] = {
-                            "game_key": game_key,
-                            "team": row['team'],
-                            "away_team": game['away_team'],
-                            "home_team": game['home_team'],
-                        }
-            except:
-                pass
+        player_team_map = get_player_team_map()
     except Exception as e:
-        pass  # Continue without game data if API fails
+        pass  # Continue without team data if API fails
 
-    # Build bets with game info
-    games_dict = {}
+    # Build bets grouped by team
+    teams_dict = {}
     total_units = 0
 
     for bet in todays_bets:
-        game_info = player_to_game.get(bet.player_id, {})
-        game_key = game_info.get("game_key", "Unknown")
-        team = game_info.get("team", "")
+        team = player_team_map.get(bet.player_id, "UNK")
 
         bet_data = {
             "player_name": bet.player_name,
             "player_id": bet.player_id,
-            "team": team,
             "betting_line": bet.betting_line,
             "direction": bet.direction,
             "tier": bet.tier,
@@ -480,27 +453,28 @@ async def get_todays_bets(db: Session = Depends(get_db)):
             "actual_pra": bet.actual_pra,
         }
 
-        if game_key not in games_dict:
-            games_dict[game_key] = {
-                "game_key": game_key,
-                "away_team": game_info.get("away_team", ""),
-                "home_team": game_info.get("home_team", ""),
+        if team not in teams_dict:
+            teams_dict[team] = {
+                "team": team,
                 "bets": []
             }
 
-        games_dict[game_key]["bets"].append(bet_data)
+        teams_dict[team]["bets"].append(bet_data)
         total_units += bet.tier_units
 
-    # Sort games by number of bets (most bets first)
-    sorted_games = sorted(games_dict.values(), key=lambda x: len(x["bets"]), reverse=True)
+    # Sort teams alphabetically, but put UNK at the end
+    sorted_teams = sorted(
+        teams_dict.values(),
+        key=lambda x: ("ZZZ" if x["team"] == "UNK" else x["team"])
+    )
 
     return {
         "date": today.isoformat(),
-        "games": sorted_games,
+        "teams": sorted_teams,
         "summary": {
             "total_bets": len(todays_bets),
             "total_units": round(total_units, 1),
-            "games_count": len([g for g in sorted_games if g["game_key"] != "Unknown"])
+            "teams_count": len([t for t in sorted_teams if t["team"] != "UNK"])
         }
     }
 

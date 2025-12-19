@@ -1,6 +1,6 @@
 /**
  * Today's Bets Page JavaScript
- * Fetches and displays today's betting recommendations grouped by game
+ * Fetches and displays today's betting recommendations grouped by team
  */
 
 async function fetchTodaysBets() {
@@ -47,17 +47,14 @@ function formatTierName(tier) {
 function renderPlayerRow(bet) {
     const directionClass = bet.direction === 'OVER' ? 'direction-over' : 'direction-under';
     const tierClass = getTierClass(bet.tier);
-
-    const teamBadge = bet.team ? `<span class="team-badge">${bet.team}</span>` : '';
-    const probText = bet.probability ? `${bet.probability}% prob` : '';
+    const predText = bet.prediction ? `pred: ${bet.prediction}` : '';
 
     return `
         <div class="player-row">
             <div class="player-info">
                 <span class="player-name">${bet.player_name}</span>
                 <div class="player-meta">
-                    ${teamBadge}
-                    <span>${probText}</span>
+                    <span>${predText}</span>
                 </div>
             </div>
             <div class="bet-line">
@@ -75,33 +72,25 @@ function renderPlayerRow(bet) {
     `;
 }
 
-function renderGameCard(game) {
-    const awayTeam = game.away_team || '???';
-    const homeTeam = game.home_team || '???';
-    const betCount = game.bets.length;
-    const totalUnits = game.bets.reduce((sum, b) => sum + b.tier_units, 0);
+function renderTeamCard(teamData) {
+    const team = teamData.team;
+    const betCount = teamData.bets.length;
+    const totalUnits = teamData.bets.reduce((sum, b) => sum + b.tier_units, 0);
 
-    // Handle unknown game (games not yet started)
-    const isUnknown = game.game_key === 'Unknown';
-    const matchupHtml = isUnknown
-        ? `<span class="team-away">Upcoming Games</span>`
-        : `<span class="team-away">${awayTeam}</span>
-           <span class="at-symbol">@</span>
-           <span class="team-home">${homeTeam}</span>`;
-
-    const cardClass = isUnknown ? 'game-card upcoming-card' : 'game-card';
+    const isUnknown = team === 'UNK';
+    const cardClass = isUnknown ? 'team-card unknown-card' : 'team-card';
 
     return `
         <div class="${cardClass}">
-            <div class="game-header">
-                <div class="matchup">
-                    ${matchupHtml}
+            <div class="team-header">
+                <div class="team-name-display">
+                    <span class="team-icon">📍</span>
+                    <span class="team-abbrev">${isUnknown ? 'Unknown' : team}</span>
                 </div>
                 <span class="bet-count">${betCount} bet${betCount !== 1 ? 's' : ''} · ${totalUnits}u</span>
             </div>
-            ${isUnknown ? '<div class="upcoming-note">Games haven\'t started yet - players will be grouped by game once live</div>' : ''}
             <div class="players-list">
-                ${game.bets.map(bet => renderPlayerRow(bet)).join('')}
+                ${teamData.bets.map(bet => renderPlayerRow(bet)).join('')}
             </div>
         </div>
     `;
@@ -121,7 +110,7 @@ async function initBetsPage() {
     const data = await fetchTodaysBets();
 
     if (!data) {
-        document.getElementById('gamesContainer').innerHTML = `
+        document.getElementById('teamsContainer').innerHTML = `
             <div class="no-bets">
                 <div class="no-bets-icon">⚠️</div>
                 <h3>Error Loading Bets</h3>
@@ -135,21 +124,21 @@ async function initBetsPage() {
     document.getElementById('betsDate').textContent = formatDate(data.date);
     document.getElementById('totalBets').textContent = data.summary.total_bets;
     document.getElementById('totalUnits').textContent = data.summary.total_units;
-    document.getElementById('gamesCount').textContent = data.summary.games_count || data.games.length;
+    document.getElementById('teamsCount').textContent = data.summary.teams_count || data.teams.length;
 
-    // Render games
-    const container = document.getElementById('gamesContainer');
-    const games = data.games || [];
+    // Render teams
+    const container = document.getElementById('teamsContainer');
+    const teams = data.teams || [];
 
-    if (games.length === 0) {
+    if (teams.length === 0) {
         container.innerHTML = renderNoBets();
         return;
     }
 
-    // Render game cards
+    // Render team cards
     let html = '';
-    for (const game of games) {
-        html += renderGameCard(game);
+    for (const team of teams) {
+        html += renderTeamCard(team);
     }
 
     container.innerHTML = html;
