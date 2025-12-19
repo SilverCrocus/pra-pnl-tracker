@@ -121,8 +121,12 @@ def update_bet_results(db: Session, results_map: Dict[tuple, Dict]) -> int:
 
     updated = 0
 
+    from datetime import date
+    today = date.today()
+
     for bet in pending_bets:
         key = (bet.player_id, bet.game_date.strftime('%Y-%m-%d'))
+        days_since_game = (today - bet.game_date).days
 
         if key in results_map:
             result_data = results_map[key]
@@ -142,6 +146,14 @@ def update_bet_results(db: Session, results_map: Dict[tuple, Dict]) -> int:
 
             updated += 1
             logger.info(f"Updated {bet.player_name}: {actual_pra} PRA, {bet.result}")
+
+        elif days_since_game >= 1:
+            # Game has passed but player not in results - they didn't play (DNP)
+            bet.result = "VOIDED"
+            bet.actual_pra = None
+            bet.actual_minutes = 0
+            updated += 1
+            logger.info(f"VOIDED {bet.player_name}: DNP (not in game results)")
 
     db.commit()
     return updated

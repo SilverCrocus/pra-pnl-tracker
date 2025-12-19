@@ -36,6 +36,11 @@ def sync_bets_from_csv(csv_path: Path, db: Session) -> int:
         # Determine result
         result = "PENDING"
         actual_minutes = row.get('actual_minutes')
+        game_date = datetime.strptime(row['game_date'], '%Y-%m-%d').date()
+
+        # Check if game date has passed (more than 1 day ago)
+        from datetime import date
+        days_since_game = (date.today() - game_date).days
 
         if pd.notna(row.get('actual_pra')):
             # Check for DNP/injury - player didn't play or played < 1 minute
@@ -46,6 +51,9 @@ def sync_bets_from_csv(csv_path: Path, db: Session) -> int:
                 result = "WON" if row['actual_pra'] > row['betting_line'] else "LOST"
             else:
                 result = "WON" if row['actual_pra'] < row['betting_line'] else "LOST"
+        elif days_since_game >= 1 and pd.isna(row.get('actual_pra')):
+            # Game has passed but no stats - player didn't play (DNP)
+            result = "VOIDED"
 
         if existing:
             # Update existing bet
