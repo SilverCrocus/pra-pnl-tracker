@@ -51,6 +51,15 @@ async def live_page():
     return {"message": "Live tracking page not found"}
 
 
+@app.get("/bets")
+async def bets_page():
+    """Serve the today's bets HTML."""
+    bets_path = static_dir / "bets.html"
+    if bets_path.exists():
+        return FileResponse(str(bets_path))
+    return {"message": "Bets page not found"}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

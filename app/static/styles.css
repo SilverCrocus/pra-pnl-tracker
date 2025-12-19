@@ -832,3 +832,28 @@ tr:last-child td {
         width: 100%;
     }
 }
+
+/* Result Badges for Bets Page */
+.result-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.result-badge.won {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.result-badge.lost {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.result-badge.voided {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+}

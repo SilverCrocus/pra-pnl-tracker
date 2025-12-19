@@ -387,6 +387,57 @@ async def get_live_bets(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/todays-bets")
+async def get_todays_bets(db: Session = Depends(get_db)):
+    """Get today's bet recommendations organized by game."""
+    from zoneinfo import ZoneInfo
+
+    # Get today's date in Eastern time (NBA schedule timezone)
+    eastern = ZoneInfo('America/New_York')
+    today = datetime.now(eastern).date()
+
+    # Get today's bets from database
+    todays_bets = db.query(Bet).filter(
+        Bet.game_date == today
+    ).order_by(Bet.tier, Bet.player_name).all()
+
+    if not todays_bets:
+        return {
+            "date": today.isoformat(),
+            "games": [],
+            "summary": {"total_bets": 0, "total_units": 0, "games_count": 0}
+        }
+
+    # Group bets - for now just return as a list since we don't have game info
+    # The frontend can group by player team if needed
+    bets_list = []
+    total_units = 0
+
+    for bet in todays_bets:
+        bets_list.append({
+            "player_name": bet.player_name,
+            "player_id": bet.player_id,
+            "betting_line": bet.betting_line,
+            "direction": bet.direction,
+            "tier": bet.tier,
+            "tier_units": bet.tier_units,
+            "prediction": round(bet.prediction, 1) if bet.prediction else None,
+            "probability": round(bet.twostage_prob * 100, 1) if bet.twostage_prob else None,
+            "result": bet.result,
+            "actual_pra": bet.actual_pra,
+        })
+        total_units += bet.tier_units
+
+    return {
+        "date": today.isoformat(),
+        "bets": bets_list,
+        "summary": {
+            "total_bets": len(bets_list),
+            "total_units": round(total_units, 1),
+        }
+    }
+
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint for Render."""
