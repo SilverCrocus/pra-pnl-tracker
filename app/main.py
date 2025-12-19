@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.api import routes
 from app.models.database import init_db
+from app.services.db_sync import sync_all_bets
 
 app = FastAPI(
     title="Goldilocks V2 PnL Tracker",
@@ -24,8 +25,12 @@ if static_dir.exists():
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database on startup."""
+    """Initialize database and sync bets on startup."""
     init_db()
+    # Sync bets from CSV files
+    data_dir = Path(__file__).parent.parent / "data"
+    if data_dir.exists():
+        sync_all_bets(data_dir)
 
 
 @app.get("/")
