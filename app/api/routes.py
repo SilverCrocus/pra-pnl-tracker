@@ -176,6 +176,15 @@ async def run_pipeline(background_tasks: BackgroundTasks):
     return {"status": "Pipeline started", "message": "Running in background"}
 
 
+@router.post("/update-results")
+async def update_results():
+    """Manually trigger result update from NBA API."""
+    from app.services.result_updater import run_result_update
+
+    result = run_result_update(days_back=3)
+    return result
+
+
 @router.post("/sync-bets")
 async def sync_bets(
     bets: List[dict],
