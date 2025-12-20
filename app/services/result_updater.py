@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 import time
 
 from sqlalchemy.orm import Session
-from nba_api.live.nba.endpoints import scoreboard, boxscore
+from nba_api.stats.endpoints import scoreboardv2, boxscoretraditionalv2
 
 from app.models.database import SessionLocal, Bet, DailySummary
 from app.config import STARTING_BANKROLL, calculate_pnl
@@ -16,13 +16,21 @@ logger = logging.getLogger(__name__)
 
 # Retry configuration
 MAX_RETRIES = 2
-RETRY_DELAY = 5  # seconds
+RETRY_DELAY = 3  # seconds
 
 
 def parse_minutes(minutes_raw) -> float:
     """Parse player minutes from various formats."""
     if minutes_raw is None or minutes_raw == '' or minutes_raw == 'DNP':
         return 0.0
+
+    # MM:SS format (most common from stats API)
+    if isinstance(minutes_raw, str) and ':' in minutes_raw:
+        try:
+            mins, secs = minutes_raw.split(':')
+            return int(mins) + int(secs) / 60
+        except (ValueError, AttributeError):
+            return 0.0
 
     # ISO 8601 duration: "PT24M30.00S"
     if isinstance(minutes_raw, str) and minutes_raw.startswith('PT'):
@@ -33,14 +41,6 @@ def parse_minutes(minutes_raw) -> float:
             return mins + secs / 60
         return 0.0
 
-    # MM:SS format
-    if isinstance(minutes_raw, str) and ':' in minutes_raw:
-        try:
-            mins, secs = minutes_raw.split(':')
-            return int(mins) + int(secs) / 60
-        except (ValueError, AttributeError):
-            return 0.0
-
     # Numeric
     try:
         val = float(minutes_raw)
@@ -49,26 +49,25 @@ def parse_minutes(minutes_raw) -> float:
         return 0.0
 
 
-def fetch_boxscore_with_retry(game_id: str) -> Optional[Dict]:
-    """Fetch boxscore with retry logic."""
+def fetch_with_retry(func, *args, **kwargs):
+    """Execute a function with retry logic."""
     for attempt in range(MAX_RETRIES + 1):
         try:
-            box = boxscore.BoxScore(game_id=game_id)
-            return box.get_dict()
+            return func(*args, **kwargs)
         except Exception as e:
             if attempt < MAX_RETRIES:
-                logger.warning(f"Boxscore fetch failed for {game_id}, attempt {attempt + 1}/{MAX_RETRIES + 1}: {e}")
+                logger.warning(f"API call failed, attempt {attempt + 1}/{MAX_RETRIES + 1}: {e}")
                 time.sleep(RETRY_DELAY)
             else:
-                logger.error(f"Boxscore fetch failed for {game_id} after {MAX_RETRIES + 1} attempts: {e}")
-                return None
+                logger.error(f"API call failed after {MAX_RETRIES + 1} attempts: {e}")
+                raise
 
 
 def fetch_game_results_for_date(target_date: date) -> Dict[int, Dict]:
     """
     Fetch player stats for all finished games on a specific date.
 
-    Uses the fast scoreboard + boxscore endpoints instead of bulk LeagueGameLog.
+    Uses scoreboardv2 to find games and boxscoretraditionalv2 for player stats.
 
     Args:
         target_date: The date to fetch results for
@@ -80,75 +79,59 @@ def fetch_game_results_for_date(target_date: date) -> Dict[int, Dict]:
     results = {}
 
     try:
-        # Get scoreboard (shows all games for today/most recent)
-        board = scoreboard.ScoreBoard()
-        scoreboard_data = board.get_dict()['scoreboard']
-        games = scoreboard_data.get('games', [])
+        # Format date as MM/DD/YYYY for NBA stats API
+        date_str = target_date.strftime('%m/%d/%Y')
 
-        # Check if scoreboard date matches target date
-        api_date = scoreboard_data.get('gameDate', '')
-        if api_date != target_date.isoformat():
-            logger.info(f"Scoreboard date {api_date} doesn't match target {target_date.isoformat()}")
-            # The live API only returns today's games, so we can only process today
-            # For historical dates, we'll rely on the CSV sync
+        # Get scoreboard for the date
+        board = fetch_with_retry(scoreboardv2.ScoreboardV2, game_date=date_str)
+        games_df = board.get_data_frames()[0]  # GameHeader dataframe
+
+        if games_df.empty:
+            logger.info(f"No games found for {target_date.isoformat()}")
             return results
 
-        # Filter to finished games only
-        finished_games = [g for g in games if g.get('gameStatus') == 3]
-        logger.info(f"Found {len(finished_games)} finished games out of {len(games)} total")
+        # Filter to finished games (GAME_STATUS_ID = 3)
+        finished_games = games_df[games_df['GAME_STATUS_ID'] == 3]
+        logger.info(f"Found {len(finished_games)} finished games out of {len(games_df)} total")
 
-        if not finished_games:
+        if finished_games.empty:
+            logger.info(f"No finished games for {target_date.isoformat()}")
             return results
 
         # Fetch boxscore for each finished game
-        for game in finished_games:
-            game_id = game['gameId']
-            home_team = game.get('homeTeam', {}).get('teamTricode', '???')
-            away_team = game.get('awayTeam', {}).get('teamTricode', '???')
-            logger.info(f"Fetching boxscore for {away_team} @ {home_team} (game {game_id})")
+        for _, game in finished_games.iterrows():
+            game_id = game['GAME_ID']
+            home_team = game.get('HOME_TEAM_ID', '???')
+            away_team = game.get('VISITOR_TEAM_ID', '???')
+            logger.info(f"Fetching boxscore for game {game_id}")
 
-            time.sleep(0.5)  # Small delay between requests
+            time.sleep(0.6)  # Rate limiting
 
-            box_data = fetch_boxscore_with_retry(game_id)
-            if not box_data:
-                logger.warning(f"Skipping game {game_id} due to fetch failure")
-                continue
+            try:
+                box = fetch_with_retry(boxscoretraditionalv2.BoxScoreTraditionalV2, game_id=game_id)
+                players_df = box.get_data_frames()[0]  # PlayerStats dataframe
 
-            game_data = box_data.get('game', {})
+                for _, player in players_df.iterrows():
+                    player_id = int(player['PLAYER_ID'])
 
-            # Extract player stats from both teams
-            for team_key in ['homeTeam', 'awayTeam']:
-                team = game_data.get(team_key, {})
-                players = team.get('players', [])
-
-                for player in players:
-                    player_id = int(player.get('personId', 0))
-                    if player_id == 0:
-                        continue
-
-                    stats = player.get('statistics', {})
-                    if not stats:
-                        # Player DNP - no stats
-                        results[player_id] = {
-                            'pra': 0,
-                            'minutes': 0
-                        }
-                        continue
-
-                    points = stats.get('points', 0)
-                    rebounds = stats.get('reboundsTotal', 0)
-                    assists = stats.get('assists', 0)
-                    pra = points + rebounds + assists
-
-                    minutes_raw = stats.get('minutesCalculated', stats.get('minutes', '0'))
+                    minutes_raw = player.get('MIN', '0:00')
                     minutes = parse_minutes(minutes_raw)
+
+                    points = player.get('PTS', 0) or 0
+                    rebounds = player.get('REB', 0) or 0
+                    assists = player.get('AST', 0) or 0
+                    pra = points + rebounds + assists
 
                     results[player_id] = {
                         'pra': pra,
                         'minutes': minutes
                     }
 
-        logger.info(f"Fetched stats for {len(results)} players")
+            except Exception as e:
+                logger.warning(f"Failed to fetch boxscore for game {game_id}: {e}")
+                continue
+
+        logger.info(f"Fetched stats for {len(results)} players from {target_date.isoformat()}")
         return results
 
     except Exception as e:
@@ -181,7 +164,7 @@ def fetch_recent_game_results(days_back: int = 3) -> Dict[tuple, Dict]:
         for player_id, stats in day_results.items():
             all_results[(player_id, date_str)] = stats
 
-        # Small delay between days
+        # Delay between days to avoid rate limiting
         if day_offset < days_back - 1:
             time.sleep(1)
 
@@ -205,11 +188,9 @@ def update_bet_results(db: Session, results_map: Dict[tuple, Dict]) -> int:
     logger.info(f"Found {len(pending_bets)} pending bets to check")
 
     updated = 0
-    today = date.today()
 
     for bet in pending_bets:
         key = (bet.player_id, bet.game_date.isoformat())
-        days_since_game = (today - bet.game_date).days
 
         if key in results_map:
             result_data = results_map[key]
@@ -229,14 +210,10 @@ def update_bet_results(db: Session, results_map: Dict[tuple, Dict]) -> int:
 
             updated += 1
             logger.info(f"Updated {bet.player_name}: {actual_pra} PRA, {bet.result}")
-
-        elif days_since_game >= 1:
-            # Game has passed but player not in results - they didn't play (DNP)
-            bet.result = "VOIDED"
-            bet.actual_pra = None
-            bet.actual_minutes = 0
-            updated += 1
-            logger.info(f"VOIDED {bet.player_name}: DNP (not in game results)")
+        else:
+            # Player not in results - don't auto-void, leave as pending
+            # The game might not have happened yet or data might not be available
+            logger.debug(f"No data for {bet.player_name} on {bet.game_date}")
 
     db.commit()
     return updated
@@ -299,7 +276,7 @@ def run_result_update(days_back: int = 3) -> Dict:
     logger.info("Starting NBA result update")
     logger.info("=" * 50)
 
-    # Fetch recent game results using fast endpoints
+    # Fetch recent game results
     results_map = fetch_recent_game_results(days_back)
 
     if not results_map:

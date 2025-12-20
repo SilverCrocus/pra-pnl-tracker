@@ -185,6 +185,26 @@ async def update_results():
     return result
 
 
+@router.post("/reset-voided")
+async def reset_voided_bets(db: Session = Depends(get_db)):
+    """Reset wrongly-VOIDED bets back to PENDING for re-evaluation."""
+    # Find VOIDED bets that don't have actual_pra set (wrongly voided)
+    voided_bets = db.query(Bet).filter(
+        Bet.result == "VOIDED",
+        Bet.actual_pra.is_(None)
+    ).all()
+
+    reset_count = 0
+    for bet in voided_bets:
+        bet.result = "PENDING"
+        bet.actual_minutes = None
+        reset_count += 1
+
+    db.commit()
+
+    return {"status": "success", "reset": reset_count}
+
+
 @router.post("/sync-bets")
 async def sync_bets(
     bets: List[dict],
