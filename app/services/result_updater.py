@@ -1,12 +1,12 @@
 """Fetch NBA game results and update bet outcomes."""
 import logging
-from datetime import datetime, timedelta
+import re
+from datetime import datetime, timedelta, date
 from typing import Dict, List, Optional
 import time
 
-import pandas as pd
 from sqlalchemy.orm import Session
-from nba_api.stats.endpoints import leaguegamelog
+from nba_api.live.nba.endpoints import scoreboard, boxscore
 
 from app.models.database import SessionLocal, Bet, DailySummary
 from app.config import STARTING_BANKROLL, calculate_pnl
@@ -14,94 +14,179 @@ from app.config import STARTING_BANKROLL, calculate_pnl
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Custom headers to avoid NBA API rate limiting
-CUSTOM_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Origin': 'https://www.nba.com',
-    'Referer': 'https://www.nba.com/',
-}
+# Retry configuration
+MAX_RETRIES = 2
+RETRY_DELAY = 5  # seconds
 
 
-def get_current_season() -> str:
-    """Get current NBA season string (e.g., '2025-26')."""
-    now = datetime.now()
-    year = now.year
-    month = now.month
-    # NBA season starts in October
-    if month >= 10:
-        return f"{year}-{str(year + 1)[2:]}"
-    else:
-        return f"{year - 1}-{str(year)[2:]}"
+def parse_minutes(minutes_raw) -> float:
+    """Parse player minutes from various formats."""
+    if minutes_raw is None or minutes_raw == '' or minutes_raw == 'DNP':
+        return 0.0
 
+    # ISO 8601 duration: "PT24M30.00S"
+    if isinstance(minutes_raw, str) and minutes_raw.startswith('PT'):
+        match = re.match(r'PT(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?', minutes_raw)
+        if match:
+            mins = int(match.group(1)) if match.group(1) else 0
+            secs = float(match.group(2)) if match.group(2) else 0.0
+            return mins + secs / 60
+        return 0.0
 
-def fetch_recent_game_results(days_back: int = 7) -> pd.DataFrame:
-    """
-    Fetch NBA game results for recent days.
+    # MM:SS format
+    if isinstance(minutes_raw, str) and ':' in minutes_raw:
+        try:
+            mins, secs = minutes_raw.split(':')
+            return int(mins) + int(secs) / 60
+        except (ValueError, AttributeError):
+            return 0.0
 
-    Args:
-        days_back: Number of days to look back
-
-    Returns:
-        DataFrame with player game results
-    """
-    season = get_current_season()
-    logger.info(f"Fetching NBA results for season {season}")
-
+    # Numeric
     try:
-        time.sleep(2)  # Rate limiting
-        league_log = leaguegamelog.LeagueGameLog(
-            season=season,
-            season_type_all_star='Regular Season',
-            player_or_team_abbreviation='P',
-            headers=CUSTOM_HEADERS,
-            timeout=120
-        )
-        df = league_log.get_data_frames()[0]
-
-        if df.empty:
-            logger.warning("No game data returned from NBA API")
-            return pd.DataFrame()
-
-        # Convert game date and filter to recent days
-        df['GAME_DATE'] = pd.to_datetime(df['GAME_DATE'])
-        cutoff_date = datetime.now() - timedelta(days=days_back)
-        df = df[df['GAME_DATE'] >= cutoff_date]
-
-        # Calculate PRA
-        df['PRA'] = df['PTS'] + df['REB'] + df['AST']
-
-        logger.info(f"Fetched {len(df)} game results from last {days_back} days")
-        return df
-
-    except Exception as e:
-        logger.error(f"Error fetching NBA results: {e}")
-        return pd.DataFrame()
+        val = float(minutes_raw)
+        return val / 60 if val > 100 else val
+    except (ValueError, TypeError):
+        return 0.0
 
 
-def build_player_results_map(df: pd.DataFrame) -> Dict[tuple, Dict]:
+def fetch_boxscore_with_retry(game_id: str) -> Optional[Dict]:
+    """Fetch boxscore with retry logic."""
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            box = boxscore.BoxScore(game_id=game_id)
+            return box.get_dict()
+        except Exception as e:
+            if attempt < MAX_RETRIES:
+                logger.warning(f"Boxscore fetch failed for {game_id}, attempt {attempt + 1}/{MAX_RETRIES + 1}: {e}")
+                time.sleep(RETRY_DELAY)
+            else:
+                logger.error(f"Boxscore fetch failed for {game_id} after {MAX_RETRIES + 1} attempts: {e}")
+                return None
+
+
+def fetch_game_results_for_date(target_date: date) -> Dict[int, Dict]:
     """
-    Build a lookup map of (player_id, game_date) -> results.
+    Fetch player stats for all finished games on a specific date.
+
+    Uses the fast scoreboard + boxscore endpoints instead of bulk LeagueGameLog.
 
     Args:
-        df: DataFrame from NBA API with game results
+        target_date: The date to fetch results for
 
     Returns:
-        Dict mapping (player_id, date_str) to {pra, minutes}
+        Dict mapping player_id to {pra, minutes}
     """
+    logger.info(f"Fetching results for {target_date.isoformat()}")
     results = {}
 
-    for _, row in df.iterrows():
-        player_id = int(row['PLAYER_ID'])
-        game_date = row['GAME_DATE'].strftime('%Y-%m-%d')
+    try:
+        # Get scoreboard (shows all games for today/most recent)
+        board = scoreboard.ScoreBoard()
+        scoreboard_data = board.get_dict()['scoreboard']
+        games = scoreboard_data.get('games', [])
 
-        results[(player_id, game_date)] = {
-            'pra': float(row['PRA']),
-            'minutes': float(row['MIN']) if pd.notna(row['MIN']) else 0
-        }
+        # Check if scoreboard date matches target date
+        api_date = scoreboard_data.get('gameDate', '')
+        if api_date != target_date.isoformat():
+            logger.info(f"Scoreboard date {api_date} doesn't match target {target_date.isoformat()}")
+            # The live API only returns today's games, so we can only process today
+            # For historical dates, we'll rely on the CSV sync
+            return results
 
-    return results
+        # Filter to finished games only
+        finished_games = [g for g in games if g.get('gameStatus') == 3]
+        logger.info(f"Found {len(finished_games)} finished games out of {len(games)} total")
+
+        if not finished_games:
+            return results
+
+        # Fetch boxscore for each finished game
+        for game in finished_games:
+            game_id = game['gameId']
+            home_team = game.get('homeTeam', {}).get('teamTricode', '???')
+            away_team = game.get('awayTeam', {}).get('teamTricode', '???')
+            logger.info(f"Fetching boxscore for {away_team} @ {home_team} (game {game_id})")
+
+            time.sleep(0.5)  # Small delay between requests
+
+            box_data = fetch_boxscore_with_retry(game_id)
+            if not box_data:
+                logger.warning(f"Skipping game {game_id} due to fetch failure")
+                continue
+
+            game_data = box_data.get('game', {})
+
+            # Extract player stats from both teams
+            for team_key in ['homeTeam', 'awayTeam']:
+                team = game_data.get(team_key, {})
+                players = team.get('players', [])
+
+                for player in players:
+                    player_id = int(player.get('personId', 0))
+                    if player_id == 0:
+                        continue
+
+                    stats = player.get('statistics', {})
+                    if not stats:
+                        # Player DNP - no stats
+                        results[player_id] = {
+                            'pra': 0,
+                            'minutes': 0
+                        }
+                        continue
+
+                    points = stats.get('points', 0)
+                    rebounds = stats.get('reboundsTotal', 0)
+                    assists = stats.get('assists', 0)
+                    pra = points + rebounds + assists
+
+                    minutes_raw = stats.get('minutesCalculated', stats.get('minutes', '0'))
+                    minutes = parse_minutes(minutes_raw)
+
+                    results[player_id] = {
+                        'pra': pra,
+                        'minutes': minutes
+                    }
+
+        logger.info(f"Fetched stats for {len(results)} players")
+        return results
+
+    except Exception as e:
+        logger.error(f"Error fetching game results for {target_date}: {e}")
+        return results
+
+
+def fetch_recent_game_results(days_back: int = 3) -> Dict[tuple, Dict]:
+    """
+    Fetch game results for recent days.
+
+    Args:
+        days_back: Number of days to look back (default 3)
+
+    Returns:
+        Dict mapping (player_id, date_str) -> {pra, minutes}
+    """
+    logger.info(f"Fetching results for last {days_back} days")
+    all_results = {}
+
+    today = date.today()
+
+    for day_offset in range(days_back):
+        target_date = today - timedelta(days=day_offset)
+        date_str = target_date.isoformat()
+
+        day_results = fetch_game_results_for_date(target_date)
+
+        # Add date to the key
+        for player_id, stats in day_results.items():
+            all_results[(player_id, date_str)] = stats
+
+        # Small delay between days
+        if day_offset < days_back - 1:
+            time.sleep(1)
+
+    logger.info(f"Total: {len(all_results)} player-game results fetched")
+    return all_results
 
 
 def update_bet_results(db: Session, results_map: Dict[tuple, Dict]) -> int:
@@ -120,12 +205,10 @@ def update_bet_results(db: Session, results_map: Dict[tuple, Dict]) -> int:
     logger.info(f"Found {len(pending_bets)} pending bets to check")
 
     updated = 0
-
-    from datetime import date
     today = date.today()
 
     for bet in pending_bets:
-        key = (bet.player_id, bet.game_date.strftime('%Y-%m-%d'))
+        key = (bet.player_id, bet.game_date.isoformat())
         days_since_game = (today - bet.game_date).days
 
         if key in results_map:
@@ -202,7 +285,7 @@ def recalculate_daily_summaries(db: Session):
     logger.info(f"Recalculated summaries for {len(dates)} days")
 
 
-def run_result_update(days_back: int = 7) -> Dict:
+def run_result_update(days_back: int = 3) -> Dict:
     """
     Main function to update bet results from NBA API.
 
@@ -216,15 +299,13 @@ def run_result_update(days_back: int = 7) -> Dict:
     logger.info("Starting NBA result update")
     logger.info("=" * 50)
 
-    # Fetch recent game results
-    game_data = fetch_recent_game_results(days_back)
+    # Fetch recent game results using fast endpoints
+    results_map = fetch_recent_game_results(days_back)
 
-    if game_data.empty:
+    if not results_map:
         logger.warning("No game data to process")
         return {"status": "no_data", "updated": 0}
 
-    # Build lookup map
-    results_map = build_player_results_map(game_data)
     logger.info(f"Built results map with {len(results_map)} player-games")
 
     # Update database

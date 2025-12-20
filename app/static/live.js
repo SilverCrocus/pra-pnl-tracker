@@ -27,31 +27,8 @@ async function loadLiveBets() {
         }
 
         if (data.tracking_state === 'complete') {
-            // All games finished - show summary instead of live tracking
-            const wins = data.bets.filter(b => b.status === 'hit').length;
-            const losses = data.bets.filter(b => b.status === 'miss').length;
-            container.innerHTML = `
-                <div class="complete-state">
-                    <div class="complete-icon">✅</div>
-                    <span class="complete-title">Tracking Complete</span>
-                    <span class="complete-date">${formatDate(data.date)}</span>
-                    <div class="complete-summary">
-                        <div class="complete-stat">
-                            <span class="stat-value text-hit">${wins}</span>
-                            <span class="stat-label">Hits</span>
-                        </div>
-                        <div class="complete-stat">
-                            <span class="stat-value text-danger">${losses}</span>
-                            <span class="stat-label">Misses</span>
-                        </div>
-                        <div class="complete-stat">
-                            <span class="stat-value">${data.summary.total}</span>
-                            <span class="stat-label">Total</span>
-                        </div>
-                    </div>
-                    <span class="complete-sub">All games have finished. Results synced to Performance page.</span>
-                </div>
-            `;
+            // All games finished - show results table
+            renderResultsTable(container, data.bets, data.date);
             return;
         }
 
@@ -278,6 +255,88 @@ function getBarColor(bet) {
     if (status === 'needs_more' || status === 'close') return 'bar-warning';
     if (status === 'unlikely' || status === 'busted' || status === 'danger' || status === 'miss') return 'bar-danger';
     return 'bar-neutral';
+}
+
+function renderResultsTable(container, bets, dateStr) {
+    // Group bets by outcome
+    const hits = bets.filter(b => b.status === 'hit');
+    const misses = bets.filter(b => b.status === 'miss');
+    const voided = bets.filter(b => b.status === 'not_started' || b.game_status === 'Not Started')
+        .concat(bets.filter(b => !['hit', 'miss'].includes(b.status) && b.current_pra === null));
+
+    // Calculate win rate (excluding voided)
+    const settled = hits.length + misses.length;
+    const winRate = settled > 0 ? ((hits.length / settled) * 100).toFixed(1) : '0.0';
+
+    container.innerHTML = `
+        <div class="results-container">
+            <div class="results-header">
+                <div class="results-title">
+                    <span class="results-date">${formatDate(dateStr)}</span>
+                    <span class="results-record">${hits.length}/${settled} Hits (${winRate}%)</span>
+                </div>
+            </div>
+
+            ${hits.length > 0 ? `
+                <div class="results-section hits-section">
+                    <div class="section-header">
+                        <span class="section-icon">✅</span>
+                        <span class="section-title">HITS (${hits.length})</span>
+                    </div>
+                    <div class="results-list">
+                        ${hits.map(bet => renderResultRow(bet, 'hit')).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            ${misses.length > 0 ? `
+                <div class="results-section misses-section">
+                    <div class="section-header">
+                        <span class="section-icon">❌</span>
+                        <span class="section-title">MISSES (${misses.length})</span>
+                    </div>
+                    <div class="results-list">
+                        ${misses.map(bet => renderResultRow(bet, 'miss')).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            ${voided.length > 0 ? `
+                <div class="results-section voided-section">
+                    <div class="section-header">
+                        <span class="section-icon">🚫</span>
+                        <span class="section-title">VOIDED (${voided.length})</span>
+                    </div>
+                    <div class="results-list">
+                        ${voided.map(bet => renderResultRow(bet, 'voided')).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function renderResultRow(bet, outcome) {
+    const actualPra = bet.current_pra !== null ? bet.current_pra : 'DNP';
+    const isGoldilocks = bet.tier === 'GOLDEN';
+
+    return `
+        <div class="result-row ${outcome}">
+            <div class="result-player">
+                <span class="player-name">${bet.player_name}</span>
+                ${isGoldilocks ? '<span class="goldilocks-badge">GOLDILOCKS</span>' : ''}
+            </div>
+            <div class="result-bet">
+                <span class="direction ${bet.direction.toLowerCase()}">${bet.direction}</span>
+                <span class="line">${bet.betting_line}</span>
+            </div>
+            <div class="result-actual">
+                <span class="arrow">→</span>
+                <span class="actual-value ${outcome}">${actualPra}</span>
+                <span class="pra-label">PRA</span>
+            </div>
+        </div>
+    `;
 }
 
 // Initial load

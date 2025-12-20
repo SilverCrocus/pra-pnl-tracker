@@ -239,49 +239,6 @@ async function loadDateTable() {
     }
 }
 
-// Load recent bets
-async function loadRecentBets() {
-    try {
-        const response = await fetch('/api/recent-bets');
-        const data = await response.json();
-
-        const container = document.getElementById('recentBets');
-
-        if (data.length === 0) {
-            container.innerHTML = '<div class="loading">No bets yet</div>';
-            return;
-        }
-
-        container.innerHTML = data.map(bet => {
-            let icon = '⏳';
-            if (bet.result === 'WON') icon = '✅';
-            else if (bet.result === 'LOST') icon = '❌';
-            else if (bet.result === 'VOIDED') icon = '🚫';
-
-            const tierClass = bet.tier === 'GOLDEN' ? 'golden' : 'high-volatility';
-            const resultClass = bet.result.toLowerCase();
-            let actualStr = 'Pending';
-            if (bet.result === 'VOIDED') actualStr = 'DNP/Voided';
-            else if (bet.actual_pra !== null) actualStr = `Actual: ${bet.actual_pra}`;
-
-            return `
-                <div class="bet-row">
-                    <div class="bet-icon">${icon}</div>
-                    <div class="bet-info">
-                        <div class="bet-player">${bet.player_name}</div>
-                        <div class="bet-details">${bet.direction} ${bet.betting_line} | ${actualStr}</div>
-                    </div>
-                    <span class="bet-tier ${tierClass}">${bet.tier}</span>
-                    <div class="bet-result ${resultClass}">${bet.result}</div>
-                </div>
-            `;
-        }).join('');
-
-    } catch (error) {
-        console.error('Error loading recent bets:', error);
-    }
-}
-
 // Load all data
 async function loadDashboard() {
     await Promise.all([
@@ -289,8 +246,7 @@ async function loadDashboard() {
         loadBankrollChart(),
         loadPnlChart(),
         loadTierTable(),
-        loadDateTable(),
-        loadRecentBets()
+        loadDateTable()
     ]);
 }
 

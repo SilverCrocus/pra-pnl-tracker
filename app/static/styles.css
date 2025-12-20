@@ -916,3 +916,193 @@ tr:last-child td {
     background: rgba(156, 163, 175, 0.2);
     color: #9ca3af;
 }
+
+/* ========== RESULTS TABLE (Live Page - Games Complete) ========== */
+
+.results-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.results-header {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.results-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.results-date {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.results-record {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #22c55e;
+}
+
+.results-section {
+    background: #151922;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #1B1F2A;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.section-icon {
+    font-size: 1rem;
+}
+
+.section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+}
+
+.hits-section .section-title {
+    color: #4ade80;
+}
+
+.misses-section .section-title {
+    color: #f87171;
+}
+
+.voided-section .section-title {
+    color: #9ca3af;
+}
+
+.results-list {
+    padding: 8px 16px;
+}
+
+.result-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    gap: 16px;
+}
+
+.result-row:last-child {
+    border-bottom: none;
+}
+
+.result-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.result-player .player-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.result-bet {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.result-bet .direction {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+}
+
+.result-bet .line {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.result-actual {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.result-actual .arrow {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.result-actual .actual-value {
+    font-size: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.result-actual .actual-value.hit {
+    color: #4ade80;
+}
+
+.result-actual .actual-value.miss {
+    color: #f87171;
+}
+
+.result-actual .actual-value.voided {
+    color: #9ca3af;
+}
+
+.result-actual .pra-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Results Table Responsive */
+@media (max-width: 768px) {
+    .results-container {
+        max-width: 100%;
+    }
+
+    .result-row {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .result-player {
+        width: 100%;
+    }
+
+    .result-bet {
+        flex: 1;
+    }
+
+    .result-actual {
+        margin-left: auto;
+    }
+}
