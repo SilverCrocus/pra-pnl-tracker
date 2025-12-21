@@ -21,9 +21,28 @@ def sync_bets_from_csv(csv_path: Path, db: Session) -> int:
     """
     Sync bets from a single CSV file to the database.
 
+    This does a FULL SYNC for the date - removes any bets not in the CSV.
+
     Returns number of new/updated bets.
     """
     df = pd.read_csv(csv_path)
+
+    if df.empty:
+        return 0
+
+    # Get the game date from the CSV
+    game_date = datetime.strptime(df.iloc[0]['game_date'], '%Y-%m-%d').date()
+
+    # Get all player_ids in this CSV
+    csv_player_ids = set(int(row['player_id']) for _, row in df.iterrows())
+
+    # Delete any existing bets for this date that are NOT in the CSV
+    # (This handles when CSV is updated with different players)
+    existing_bets = db.query(Bet).filter(Bet.game_date == game_date).all()
+    for bet in existing_bets:
+        if bet.player_id not in csv_player_ids:
+            db.delete(bet)
+
     count = 0
 
     for _, row in df.iterrows():
@@ -36,11 +55,6 @@ def sync_bets_from_csv(csv_path: Path, db: Session) -> int:
         # Determine result
         result = "PENDING"
         actual_minutes = row.get('actual_minutes')
-        game_date = datetime.strptime(row['game_date'], '%Y-%m-%d').date()
-
-        # Check if game date has passed (more than 1 day ago)
-        from datetime import date
-        days_since_game = (date.today() - game_date).days
 
         if pd.notna(row.get('actual_pra')):
             # Check for DNP/injury - player didn't play or played < 1 minute
@@ -55,14 +69,19 @@ def sync_bets_from_csv(csv_path: Path, db: Session) -> int:
         # for result_updater to fetch from NBA API
 
         if existing:
-            # Update existing bet
-            existing.actual_pra = row.get('actual_pra') if pd.notna(row.get('actual_pra')) else None
-            existing.actual_minutes = row.get('actual_minutes') if pd.notna(row.get('actual_minutes')) else None
-            existing.result = result
+            # Update existing bet (but preserve result if already settled)
+            if existing.result == "PENDING":
+                existing.actual_pra = row.get('actual_pra') if pd.notna(row.get('actual_pra')) else None
+                existing.actual_minutes = row.get('actual_minutes') if pd.notna(row.get('actual_minutes')) else None
+                existing.result = result
+            elif pd.notna(row.get('actual_pra')):
+                # Update actual values if CSV has them
+                existing.actual_pra = float(row['actual_pra'])
+                existing.actual_minutes = float(row['actual_minutes']) if pd.notna(row.get('actual_minutes')) else None
         else:
             # Create new bet
             bet = Bet(
-                game_date=datetime.strptime(row['game_date'], '%Y-%m-%d').date(),
+                game_date=game_date,
                 player_id=int(row['player_id']),
                 player_name=row['player_name'],
                 betting_line=float(row['betting_line']),
