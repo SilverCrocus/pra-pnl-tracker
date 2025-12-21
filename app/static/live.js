@@ -1,5 +1,8 @@
 // Goldilocks V2 Live Tracker - Game Cards Edition
 
+// Cache for recent results (so we don't lose them on live updates)
+let cachedRecentResults = null;
+
 async function loadLiveBets() {
     try {
         const response = await fetch('/api/live-bets');
@@ -23,12 +26,14 @@ async function loadLiveBets() {
                     <span class="empty-sub">Check back when new bets are generated</span>
                 </div>
             `;
+            appendCachedRecentResults();
             return;
         }
 
         if (data.tracking_state === 'complete') {
             // All games finished - show results table
             renderResultsTable(container, data.bets, data.date);
+            appendCachedRecentResults();
             return;
         }
 
@@ -40,6 +45,7 @@ async function loadLiveBets() {
                     <span class="empty-sub">${data.summary.pending} bets ready to track</span>
                 </div>
             `;
+            appendCachedRecentResults();
             return;
         }
 
@@ -49,6 +55,9 @@ async function loadLiveBets() {
         // Render game cards
         renderGameCards(betsByGame, data.games);
 
+        // Re-append cached recent results if we have them
+        appendCachedRecentResults();
+
     } catch (error) {
         console.error('Error loading live bets:', error);
         document.getElementById('gameCards').innerHTML = `
@@ -56,6 +65,23 @@ async function loadLiveBets() {
                 <span>Failed to load data. Retrying...</span>
             </div>
         `;
+        // Still show recent results even on error
+        appendCachedRecentResults();
+    }
+}
+
+function appendCachedRecentResults() {
+    if (!cachedRecentResults) return;
+
+    const container = document.getElementById('gameCards');
+    const existingRecent = container.querySelector('.recent-results-section');
+    if (existingRecent) {
+        existingRecent.remove();
+    }
+
+    const recentHtml = renderRecentResultsSection(cachedRecentResults);
+    if (recentHtml) {
+        container.insertAdjacentHTML('beforeend', recentHtml);
     }
 }
 
@@ -408,24 +434,12 @@ function renderDayResults(day) {
 }
 
 async function loadAll() {
-    // Load live bets
-    await loadLiveBets();
-
-    // Always load and show recent results below
+    // Load and cache recent results first
     const recentData = await loadRecentResults();
-    const container = document.getElementById('gameCards');
+    cachedRecentResults = recentData;
 
-    // Check if we need to append recent results
-    const existingRecent = container.querySelector('.recent-results-section');
-    if (existingRecent) {
-        existingRecent.remove();
-    }
-
-    // Append recent results section
-    const recentHtml = renderRecentResultsSection(recentData);
-    if (recentHtml) {
-        container.insertAdjacentHTML('beforeend', recentHtml);
-    }
+    // Load live bets (this will also append cached recent results)
+    await loadLiveBets();
 }
 
 // Initial load
