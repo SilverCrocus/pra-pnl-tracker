@@ -339,8 +339,98 @@ function renderResultRow(bet, outcome) {
     `;
 }
 
-// Initial load
-loadLiveBets();
+async function loadRecentResults() {
+    try {
+        const response = await fetch('/api/recent-results?days=3');
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error loading recent results:', error);
+        return { days: [], total_days: 0 };
+    }
+}
 
-// Refresh every 5 seconds
+function renderRecentResultsSection(recentData) {
+    if (!recentData.days || recentData.days.length === 0) {
+        return '';
+    }
+
+    return `
+        <div class="recent-results-section">
+            <div class="section-header-bar">
+                <h2>Recent Results</h2>
+            </div>
+            ${recentData.days.map(day => renderDayResults(day)).join('')}
+        </div>
+    `;
+}
+
+function renderDayResults(day) {
+    const dateObj = new Date(day.date + 'T00:00:00');
+    const dateDisplay = dateObj.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+    });
+
+    const hits = day.bets.filter(b => b.result === 'WON');
+    const misses = day.bets.filter(b => b.result === 'LOST');
+    const voided = day.bets.filter(b => b.result === 'VOIDED');
+
+    return `
+        <div class="day-results-card">
+            <div class="day-header">
+                <span class="day-date">${dateDisplay}</span>
+                <span class="day-record">${day.wins}/${day.wins + day.losses} (${day.win_rate}%)</span>
+            </div>
+            <div class="day-bets-grid">
+                ${hits.map(bet => `
+                    <div class="result-chip hit">
+                        <span class="chip-name">${bet.player_name.split(' ').pop()}</span>
+                        <span class="chip-result">${bet.actual_pra}/${bet.betting_line}</span>
+                    </div>
+                `).join('')}
+                ${misses.map(bet => `
+                    <div class="result-chip miss">
+                        <span class="chip-name">${bet.player_name.split(' ').pop()}</span>
+                        <span class="chip-result">${bet.actual_pra}/${bet.betting_line}</span>
+                    </div>
+                `).join('')}
+                ${voided.map(bet => `
+                    <div class="result-chip voided">
+                        <span class="chip-name">${bet.player_name.split(' ').pop()}</span>
+                        <span class="chip-result">DNP</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+async function loadAll() {
+    // Load live bets
+    await loadLiveBets();
+
+    // Always load and show recent results below
+    const recentData = await loadRecentResults();
+    const container = document.getElementById('gameCards');
+
+    // Check if we need to append recent results
+    const existingRecent = container.querySelector('.recent-results-section');
+    if (existingRecent) {
+        existingRecent.remove();
+    }
+
+    // Append recent results section
+    const recentHtml = renderRecentResultsSection(recentData);
+    if (recentHtml) {
+        container.insertAdjacentHTML('beforeend', recentHtml);
+    }
+}
+
+// Initial load
+loadAll();
+
+// Refresh live data every 5 seconds, recent results less frequently
 setInterval(loadLiveBets, 5000);
+setInterval(loadAll, 60000); // Full refresh every minute

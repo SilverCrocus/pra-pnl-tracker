@@ -177,12 +177,72 @@ async def run_pipeline(background_tasks: BackgroundTasks):
 
 
 @router.post("/update-results")
-async def update_results():
+async def update_results(days_back: int = 3):
     """Manually trigger result update from NBA API."""
     from app.services.result_updater import run_result_update
 
-    result = run_result_update(days_back=3)
+    result = run_result_update(days_back=days_back)
     return result
+
+
+@router.post("/update-results-for-date")
+async def update_results_for_date(target_date: str, db: Session = Depends(get_db)):
+    """
+    Update results for a specific date.
+    First resets any wrongly-VOIDED bets for that date, then fetches fresh results.
+
+    Args:
+        target_date: Date in YYYY-MM-DD format
+    """
+    from datetime import date as date_module
+    from app.services.result_updater import fetch_game_results_for_date, update_bet_results, recalculate_daily_summaries
+
+    try:
+        target = date_module.fromisoformat(target_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    # First, reset any VOIDED bets for this date that don't have actual_pra
+    voided_bets = db.query(Bet).filter(
+        Bet.game_date == target,
+        Bet.result == "VOIDED",
+        Bet.actual_pra.is_(None)
+    ).all()
+
+    reset_count = 0
+    for bet in voided_bets:
+        bet.result = "PENDING"
+        bet.actual_minutes = None
+        reset_count += 1
+
+    db.commit()
+
+    # Fetch results for the specific date
+    results = fetch_game_results_for_date(target)
+
+    if not results:
+        return {
+            "status": "no_games",
+            "date": target_date,
+            "reset": reset_count,
+            "updated": 0,
+            "message": f"No finished games found for {target_date}"
+        }
+
+    # Build results map with date
+    results_map = {(player_id, target_date): stats for player_id, stats in results.items()}
+
+    # Update bets
+    updated = update_bet_results(db, results_map)
+    recalculate_daily_summaries(db)
+
+    return {
+        "status": "success",
+        "date": target_date,
+        "reset": reset_count,
+        "updated": updated,
+        "players_found": len(results)
+    }
 
 
 @router.post("/reset-voided")
@@ -505,6 +565,66 @@ async def get_todays_bets(db: Session = Depends(get_db)):
             "total_units": round(total_units, 1),
             "teams_count": len([t for t in sorted_teams if t["team"] != "UNK"])
         }
+    }
+
+
+@router.get("/recent-results")
+async def get_recent_results(days: int = 3, db: Session = Depends(get_db)):
+    """Get recent settled bet results for display."""
+    from zoneinfo import ZoneInfo
+
+    # Get today's date in Eastern time
+    eastern = ZoneInfo('America/New_York')
+    today = datetime.now(eastern).date()
+
+    # Get bets from recent days (excluding today)
+    recent_bets = db.query(Bet).filter(
+        Bet.game_date < today,
+        Bet.game_date >= today - timedelta(days=days),
+        Bet.result.in_(["WON", "LOST", "VOIDED"])
+    ).order_by(desc(Bet.game_date), Bet.player_name).all()
+
+    # Group by date
+    by_date = {}
+    for bet in recent_bets:
+        date_str = bet.game_date.isoformat()
+        if date_str not in by_date:
+            by_date[date_str] = {
+                "date": date_str,
+                "bets": [],
+                "wins": 0,
+                "losses": 0,
+                "voided": 0
+            }
+
+        by_date[date_str]["bets"].append({
+            "player_name": bet.player_name,
+            "betting_line": bet.betting_line,
+            "direction": bet.direction,
+            "tier": bet.tier,
+            "actual_pra": round(bet.actual_pra, 1) if bet.actual_pra else None,
+            "result": bet.result,
+        })
+
+        if bet.result == "WON":
+            by_date[date_str]["wins"] += 1
+        elif bet.result == "LOST":
+            by_date[date_str]["losses"] += 1
+        else:
+            by_date[date_str]["voided"] += 1
+
+    # Convert to list sorted by date descending
+    results = sorted(by_date.values(), key=lambda x: x["date"], reverse=True)
+
+    # Calculate win rate for each day
+    for day in results:
+        settled = day["wins"] + day["losses"]
+        day["win_rate"] = round((day["wins"] / settled * 100), 1) if settled > 0 else 0
+        day["total"] = len(day["bets"])
+
+    return {
+        "days": results,
+        "total_days": len(results)
     }
 
 

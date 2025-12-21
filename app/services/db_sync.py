@@ -51,9 +51,8 @@ def sync_bets_from_csv(csv_path: Path, db: Session) -> int:
                 result = "WON" if row['actual_pra'] > row['betting_line'] else "LOST"
             else:
                 result = "WON" if row['actual_pra'] < row['betting_line'] else "LOST"
-        elif days_since_game >= 1 and pd.isna(row.get('actual_pra')):
-            # Game has passed but no stats - player didn't play (DNP)
-            result = "VOIDED"
+        # NOTE: Don't auto-void bets without results - leave them PENDING
+        # for result_updater to fetch from NBA API
 
         if existing:
             # Update existing bet
