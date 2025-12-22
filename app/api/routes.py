@@ -265,6 +265,37 @@ async def reset_voided_bets(db: Session = Depends(get_db)):
     return {"status": "success", "reset": reset_count}
 
 
+@router.delete("/delete-bet")
+async def delete_bet(
+    player_id: int,
+    game_date: str,
+    api_key: str,
+    db: Session = Depends(get_db)
+):
+    """Delete a specific bet by player_id and game_date (protected by API key)."""
+    if api_key != SYNC_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    target_date = date.fromisoformat(game_date)
+    bet = db.query(Bet).filter(
+        Bet.player_id == player_id,
+        Bet.game_date == target_date
+    ).first()
+
+    if not bet:
+        raise HTTPException(status_code=404, detail="Bet not found")
+
+    player_name = bet.player_name
+    db.delete(bet)
+    db.commit()
+
+    # Recalculate summaries
+    from app.services.result_updater import recalculate_daily_summaries
+    recalculate_daily_summaries(db)
+
+    return {"status": "success", "deleted": player_name, "game_date": game_date}
+
+
 @router.post("/sync-bets")
 async def sync_bets(
     bets: List[dict],
