@@ -526,9 +526,10 @@ async def get_live_bets(db: Session = Depends(get_db)):
 
 @router.get("/todays-bets")
 async def get_todays_bets(db: Session = Depends(get_db)):
-    """Get today's bet recommendations organized by team."""
+    """Get today's bet recommendations organized by game matchup."""
     from zoneinfo import ZoneInfo
     from app.services.team_lookup import get_player_team_map
+    from app.services.live_tracker import live_tracker
 
     # Get today's date in Eastern time (NBA schedule timezone)
     eastern = ZoneInfo('America/New_York')
@@ -542,8 +543,8 @@ async def get_todays_bets(db: Session = Depends(get_db)):
     if not todays_bets:
         return {
             "date": today.isoformat(),
-            "teams": [],
-            "summary": {"total_bets": 0, "total_units": 0, "teams_count": 0}
+            "games": [],
+            "summary": {"total_bets": 0, "total_units": 0, "games_count": 0}
         }
 
     # Get player-to-team mapping from NBA API
@@ -553,16 +554,54 @@ async def get_todays_bets(db: Session = Depends(get_db)):
     except Exception as e:
         pass  # Continue without team data if API fails
 
-    # Build bets grouped by team
-    teams_dict = {}
+    # Get today's games from NBA API to build team-to-game mapping
+    team_to_game = {}
+    try:
+        # Try live scoreboard first
+        games = live_tracker.get_live_games(filter_date=today.isoformat())
+        if not games:
+            games = live_tracker.get_live_games()
+
+        # If still no games, use ScoreboardV2 which has schedule data
+        if not games:
+            from nba_api.stats.endpoints import scoreboardv2
+            from nba_api.stats.static import teams as nba_teams
+
+            # Build team ID to tricode map
+            team_id_to_tricode = {t['id']: t['abbreviation'] for t in nba_teams.get_teams()}
+
+            scoreboard = scoreboardv2.ScoreboardV2(game_date=today.strftime('%m/%d/%Y'))
+            games_df = scoreboard.get_data_frames()[0]
+
+            for _, row in games_df.iterrows():
+                home_code = team_id_to_tricode.get(row['HOME_TEAM_ID'], 'UNK')
+                away_code = team_id_to_tricode.get(row['VISITOR_TEAM_ID'], 'UNK')
+                matchup = f"{away_code} @ {home_code}"
+                team_to_game[home_code] = matchup
+                team_to_game[away_code] = matchup
+        else:
+            for game in games:
+                matchup = f"{game['away_team']} @ {game['home_team']}"
+                team_to_game[game['home_team']] = matchup
+                team_to_game[game['away_team']] = matchup
+    except Exception as e:
+        pass  # Continue without game data if API fails
+
+    # Build bets grouped by game matchup
+    games_dict = {}
     total_units = 0
+
+    # Define tier order for sorting (GOLDEN/GOLD first)
+    tier_order = {'GOLDEN': 0, 'GOLD': 0, 'BRONZE': 1}
 
     for bet in todays_bets:
         team = player_team_map.get(bet.player_id, "UNK")
+        game_matchup = team_to_game.get(team, f"{team} Game")
 
         bet_data = {
             "player_name": bet.player_name,
             "player_id": bet.player_id,
+            "team": team,
             "betting_line": bet.betting_line,
             "direction": bet.direction,
             "tier": bet.tier,
@@ -573,28 +612,32 @@ async def get_todays_bets(db: Session = Depends(get_db)):
             "actual_pra": bet.actual_pra,
         }
 
-        if team not in teams_dict:
-            teams_dict[team] = {
-                "team": team,
+        if game_matchup not in games_dict:
+            games_dict[game_matchup] = {
+                "matchup": game_matchup,
                 "bets": []
             }
 
-        teams_dict[team]["bets"].append(bet_data)
+        games_dict[game_matchup]["bets"].append(bet_data)
         total_units += bet.tier_units
 
-    # Sort teams alphabetically, but put UNK at the end
-    sorted_teams = sorted(
-        teams_dict.values(),
-        key=lambda x: ("ZZZ" if x["team"] == "UNK" else x["team"])
+    # Sort bets within each game by tier (Golden first, then Bronze)
+    for game in games_dict.values():
+        game["bets"].sort(key=lambda b: (tier_order.get(b["tier"], 2), b["player_name"]))
+
+    # Sort games by number of bets (most first), then alphabetically
+    sorted_games = sorted(
+        games_dict.values(),
+        key=lambda x: (-len(x["bets"]), x["matchup"])
     )
 
     return {
         "date": today.isoformat(),
-        "teams": sorted_teams,
+        "games": sorted_games,
         "summary": {
             "total_bets": len(todays_bets),
             "total_units": round(total_units, 1),
-            "teams_count": len([t for t in sorted_teams if t["team"] != "UNK"])
+            "games_count": len(sorted_games)
         }
     }
 

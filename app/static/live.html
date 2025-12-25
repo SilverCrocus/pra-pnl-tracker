@@ -5,13 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Tracker - Goldilocks V2</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="stylesheet" href="/static/styles.css?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css?v=5">
 </head>
 <body>
+    <!-- Ambient background effects -->
+    <div class="ambient-glow ambient-glow-1"></div>
+    <div class="ambient-glow ambient-glow-2"></div>
+
     <div class="container">
-        <!-- Header with Nav -->
+        <!-- Header -->
         <header>
-            <h1>Goldilocks <span>V2</span> Live</h1>
+            <div class="logo">
+                <span class="logo-icon">◈</span>
+                <h1>Goldilocks <span>V2</span></h1>
+            </div>
             <nav class="nav-tabs">
                 <a href="/" class="nav-tab">Performance</a>
                 <a href="/live" class="nav-tab active">Live</a>
@@ -19,41 +29,52 @@
             </nav>
         </header>
 
-        <!-- Live Summary Bar -->
-        <div class="live-summary-bar">
-            <div class="summary-stat">
-                <span class="stat-value" id="totalBets">0</span>
-                <span class="stat-label">Tracking</span>
-            </div>
-            <div class="summary-stat">
-                <div class="live-indicator">
-                    <span class="live-dot"></span>
-                    <span class="stat-value live-text" id="liveCount">0</span>
+        <!-- Hero Summary Section -->
+        <section class="live-hero-section">
+            <div class="live-hero-card">
+                <div class="live-hero-title">
+                    <span class="live-badge"><span class="pulse-dot"></span>LIVE TRACKING</span>
+                    <span class="live-date" id="trackingDate">Loading...</span>
                 </div>
-                <span class="stat-label">Live</span>
+
+                <div class="live-hero-stats">
+                    <div class="live-stat-box primary">
+                        <div class="live-stat-value" id="hitsDisplay">-/-</div>
+                        <div class="live-stat-label">Hits</div>
+                    </div>
+                    <div class="live-stat-box">
+                        <div class="live-stat-value" id="todayPnl">$0.00</div>
+                        <div class="live-stat-label">Today's P&L</div>
+                    </div>
+                    <div class="live-stat-box">
+                        <div class="live-stat-value" id="winRateDisplay">--%</div>
+                        <div class="live-stat-label">Win Rate</div>
+                    </div>
+                    <div class="live-stat-box">
+                        <div class="live-stat-value" id="pendingCount">0</div>
+                        <div class="live-stat-label">Pending</div>
+                    </div>
+                </div>
+
+                <div class="live-status-bar">
+                    <span class="status-item" id="liveGamesStatus">● 0 games live</span>
+                    <span class="status-divider">·</span>
+                    <span class="status-item" id="upcomingGamesStatus">○ 0 games upcoming</span>
+                    <span class="status-divider">·</span>
+                    <span class="status-item muted" id="lastUpdateTime">Updated just now</span>
+                </div>
             </div>
-            <div class="summary-stat">
-                <span class="stat-value hit-text" id="hitsCount">0</span>
-                <span class="stat-label">Hits</span>
-            </div>
-            <div class="summary-stat">
-                <span class="stat-value" id="pendingCount">0</span>
-                <span class="stat-label">Pending</span>
-            </div>
-            <div class="summary-stat last-update-stat">
-                <span class="stat-label" id="lastUpdate">Updating...</span>
-            </div>
-        </div>
+        </section>
 
         <!-- Game Cards Container -->
-        <div class="game-cards-container" id="gameCards">
+        <section class="game-cards-section" id="gameCards">
             <div class="loading-state">
                 <div class="loading-spinner"></div>
                 <span>Loading live data...</span>
             </div>
-        </div>
+        </section>
     </div>
 
-    <script src="/static/live.js?v=4"></script>
+    <script src="/static/live.js?v=6"></script>
 </body>
 </html>

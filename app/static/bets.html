@@ -3,309 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Today's Bets | Goldilocks V2</title>
+    <title>Today's Picks - Goldilocks V2</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="stylesheet" href="/static/styles.css?v=2">
-    <style>
-        .bets-header {
-            text-align: center;
-            padding: 2rem 1rem;
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .bets-header h1 {
-            font-size: 1.75rem;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, #f59e0b, #10b981);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .bets-date {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .bets-summary {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 1.5rem;
-            flex-wrap: wrap;
-        }
-
-        .summary-item {
-            text-align: center;
-        }
-
-        .summary-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .summary-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .teams-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            gap: 1rem;
-            max-width: 1400px;
-            margin: 1.5rem auto;
-            padding: 0 1rem;
-        }
-
-        .team-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .team-card.unknown-card {
-            border-color: rgba(239, 68, 68, 0.3);
-            opacity: 0.7;
-        }
-
-        .team-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.85rem 1.25rem;
-            background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(96, 165, 250, 0.05) 100%);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .team-name-display {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .team-icon {
-            font-size: 1rem;
-        }
-
-        .team-abbrev {
-            font-weight: 700;
-            font-size: 1.2rem;
-            color: #60a5fa;
-        }
-
-        .bet-count {
-            background: rgba(245, 158, 11, 0.15);
-            color: #f59e0b;
-            padding: 0.25rem 0.6rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .players-list {
-            padding: 0.5rem 0;
-        }
-
-        .player-row {
-            display: grid;
-            grid-template-columns: 1fr auto auto auto;
-            gap: 0.75rem;
-            align-items: center;
-            padding: 0.75rem 1.25rem;
-            border-bottom: 1px solid var(--border-subtle);
-            transition: background 0.15s ease;
-        }
-
-        .player-row:last-child {
-            border-bottom: none;
-        }
-
-        .player-row:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .player-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.15rem;
-            min-width: 0;
-        }
-
-        .player-name {
-            font-weight: 600;
-            color: var(--text-primary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .player-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .team-badge {
-            background: rgba(96, 165, 250, 0.15);
-            color: #60a5fa;
-            padding: 0.1rem 0.4rem;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 0.65rem;
-        }
-
-        .bet-line {
-            text-align: center;
-            min-width: 50px;
-        }
-
-        .line-value {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            font-variant-numeric: tabular-nums;
-        }
-
-        .line-label {
-            font-size: 0.6rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-
-        .bet-direction {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.35rem 0.65rem;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.8rem;
-            min-width: 60px;
-        }
-
-        .direction-over {
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-        }
-
-        .direction-under {
-            background: rgba(239, 68, 68, 0.15);
-            color: #ef4444;
-        }
-
-        .bet-tier {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 0.2rem;
-            min-width: 65px;
-        }
-
-        .tier-badge {
-            padding: 0.2rem 0.45rem;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .tier-golden {
-            background: rgba(245, 158, 11, 0.15);
-            color: #f59e0b;
-        }
-
-        .tier-high-volatility {
-            background: rgba(139, 92, 246, 0.15);
-            color: #8b5cf6;
-        }
-
-        .units {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            font-variant-numeric: tabular-nums;
-        }
-
-        .no-bets {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-secondary);
-            grid-column: 1 / -1;
-        }
-
-        .no-bets-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-secondary);
-            grid-column: 1 / -1;
-        }
-
-        @media (max-width: 500px) {
-            .teams-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .player-row {
-                grid-template-columns: 1fr auto auto;
-            }
-
-            .bet-tier {
-                display: none;
-            }
-
-            .team-abbrev {
-                font-size: 1rem;
-            }
-        }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css?v=5">
 </head>
 <body>
-    <header>
-        <nav class="nav-tabs">
-            <a href="/" class="nav-tab">Performance</a>
-            <a href="/live" class="nav-tab">Live</a>
-            <a href="/bets" class="nav-tab active">Today's Bets</a>
-        </nav>
-    </header>
+    <!-- Ambient background effects -->
+    <div class="ambient-glow ambient-glow-1"></div>
+    <div class="ambient-glow ambient-glow-2"></div>
 
-    <main>
-        <div class="bets-header">
-            <h1>Today's Bets</h1>
-            <div class="bets-date" id="betsDate">Loading...</div>
-            <div class="bets-summary">
-                <div class="summary-item">
-                    <div class="summary-value" id="totalBets">-</div>
-                    <div class="summary-label">Total Bets</div>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <span class="logo-icon">◈</span>
+                <h1>Goldilocks <span>V2</span></h1>
+            </div>
+            <nav class="nav-tabs">
+                <a href="/" class="nav-tab">Performance</a>
+                <a href="/live" class="nav-tab">Live</a>
+                <a href="/bets" class="nav-tab active">Today's Bets</a>
+            </nav>
+        </header>
+
+        <!-- Hero Summary Section -->
+        <section class="bets-hero-section">
+            <div class="bets-hero-card">
+                <div class="bets-hero-title">
+                    <span class="bets-label">TODAY'S PICKS</span>
+                    <span class="bets-date" id="betsDate">Loading...</span>
                 </div>
-                <div class="summary-item">
-                    <div class="summary-value" id="totalUnits">-</div>
-                    <div class="summary-label">Units</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-value" id="teamsCount">-</div>
-                    <div class="summary-label">Teams</div>
+
+                <div class="bets-hero-stats">
+                    <div class="bets-stat-box">
+                        <div class="bets-stat-value" id="totalBets">-</div>
+                        <div class="bets-stat-label">Bets</div>
+                    </div>
+                    <div class="bets-stat-box">
+                        <div class="bets-stat-value" id="totalUnits">-</div>
+                        <div class="bets-stat-label">Units</div>
+                    </div>
+                    <div class="bets-stat-box">
+                        <div class="bets-stat-value" id="gamesCount">-</div>
+                        <div class="bets-stat-label">Games</div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="teams-grid" id="teamsContainer">
-            <div class="loading">Loading today's bets...</div>
-        </div>
-    </main>
+        <!-- Game Cards Container -->
+        <section class="bets-games-section" id="gamesContainer">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <span>Loading today's picks...</span>
+            </div>
+        </section>
+    </div>
 
-    <script src="/static/bets.js?v=2"></script>
+    <script src="/static/bets.js?v=5"></script>
 </body>
 </html>

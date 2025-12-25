@@ -1,6 +1,6 @@
 /**
- * Today's Bets Page JavaScript
- * Fetches and displays today's betting recommendations grouped by team
+ * Today's Bets Page JavaScript - Redesigned
+ * Fetches and displays today's betting recommendations grouped by game matchup
  */
 
 async function fetchTodaysBets() {
@@ -17,80 +17,68 @@ async function fetchTodaysBets() {
 function formatDate(dateStr) {
     const date = new Date(dateStr + 'T00:00:00');
     return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
+        weekday: 'short',
+        month: 'short',
         day: 'numeric'
     });
 }
 
-function getTierClass(tier) {
-    const tierMap = {
-        'GOLDEN': 'tier-golden',
-        'HIGH_VOLATILITY': 'tier-high-volatility',
-        'PROB_SWEET_SPOT': 'tier-prob-sweet-spot',
-        'STD_SWEET_SPOT': 'tier-std-sweet-spot'
-    };
-    return tierMap[tier] || 'tier-golden';
-}
-
-function formatTierName(tier) {
+function formatTierBadge(tier) {
+    if (tier === 'GOLDEN' || tier === 'GOLD') {
+        return '<span class="tier-badge golden">GOLDEN</span>';
+    } else if (tier === 'BRONZE') {
+        return '<span class="tier-badge bronze">BRONZE</span>';
+    }
+    // For any other tiers, format nicely
     const nameMap = {
-        'GOLDEN': 'Golden',
-        'HIGH_VOLATILITY': 'High Vol',
-        'PROB_SWEET_SPOT': 'Prob SS',
-        'STD_SWEET_SPOT': 'Std SS'
+        'HIGH_VOLATILITY': 'HIGH VOL',
+        'PROB_SWEET_SPOT': 'PROB SS',
+        'STD_SWEET_SPOT': 'STD SS'
     };
-    return nameMap[tier] || tier;
+    const displayName = nameMap[tier] || tier;
+    return `<span class="tier-badge bronze">${displayName}</span>`;
 }
 
-function renderPlayerRow(bet) {
-    const directionClass = bet.direction === 'OVER' ? 'direction-over' : 'direction-under';
-    const tierClass = getTierClass(bet.tier);
-    const predText = bet.prediction ? `pred: ${bet.prediction}` : '';
+function renderBetPlayerRow(bet) {
+    const direction = bet.direction;
+    const directionClass = direction === 'OVER' ? 'over' : 'under';
+    const prediction = bet.prediction ? `Pred: ${bet.prediction}` : '';
 
     return `
-        <div class="player-row">
-            <div class="player-info">
-                <span class="player-name">${bet.player_name}</span>
-                <div class="player-meta">
-                    <span>${predText}</span>
+        <div class="bet-player-row">
+            <div class="bet-player-main">
+                <span class="bet-player-name">${bet.player_name}</span>
+                <div class="bet-line-row">
+                    <span class="direction ${directionClass}">${direction}</span>
+                    <span class="bet-line-value">${bet.betting_line} PRA</span>
+                    ${prediction ? `<span class="bet-prediction">${prediction}</span>` : ''}
                 </div>
             </div>
-            <div class="bet-line">
-                <div class="line-value">${bet.betting_line}</div>
-                <div class="line-label">Line</div>
-            </div>
-            <div class="bet-direction ${directionClass}">
-                ${bet.direction}
-            </div>
-            <div class="bet-tier">
-                <span class="tier-badge ${tierClass}">${formatTierName(bet.tier)}</span>
-                <span class="units">${bet.tier_units}u</span>
+            <div class="bet-tier-col">
+                ${formatTierBadge(bet.tier)}
+                <span class="bet-units-display">${bet.tier_units}u</span>
             </div>
         </div>
     `;
 }
 
-function renderTeamCard(teamData) {
-    const team = teamData.team;
-    const betCount = teamData.bets.length;
-    const totalUnits = teamData.bets.reduce((sum, b) => sum + b.tier_units, 0);
-
-    const isUnknown = team === 'UNK';
-    const cardClass = isUnknown ? 'team-card unknown-card' : 'team-card';
+function renderGameCard(gameData) {
+    const matchup = gameData.matchup;
+    const betCount = gameData.bets.length;
 
     return `
-        <div class="${cardClass}">
-            <div class="team-header">
-                <div class="team-name-display">
-                    <span class="team-icon">📍</span>
-                    <span class="team-abbrev">${isUnknown ? 'Unknown' : team}</span>
+        <div class="bets-game-card">
+            <div class="bets-game-header">
+                <div class="game-matchup">
+                    <span class="game-icon">🏀</span>
+                    <span class="game-teams">${matchup}</span>
                 </div>
-                <span class="bet-count">${betCount} bet${betCount !== 1 ? 's' : ''} · ${totalUnits}u</span>
+                <div class="game-meta">
+                    <span class="picks-count">${betCount} pick${betCount !== 1 ? 's' : ''}</span>
+                </div>
             </div>
-            <div class="players-list">
-                ${teamData.bets.map(bet => renderPlayerRow(bet)).join('')}
+            <div class="bets-game-players">
+                ${gameData.bets.map(bet => renderBetPlayerRow(bet)).join('')}
             </div>
         </div>
     `;
@@ -98,51 +86,57 @@ function renderTeamCard(teamData) {
 
 function renderNoBets() {
     return `
-        <div class="no-bets">
-            <div class="no-bets-icon">📋</div>
-            <h3>No Bets Today</h3>
-            <p>Check back when new betting recommendations are generated.</p>
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <span class="empty-title">No Bets Today</span>
+            <span class="empty-sub">Check back when new betting recommendations are generated.</span>
+        </div>
+    `;
+}
+
+function renderError() {
+    return `
+        <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <span class="empty-title">Error Loading Bets</span>
+            <span class="empty-sub">Please try refreshing the page.</span>
         </div>
     `;
 }
 
 async function initBetsPage() {
     const data = await fetchTodaysBets();
+    const container = document.getElementById('gamesContainer');
 
     if (!data) {
-        document.getElementById('teamsContainer').innerHTML = `
-            <div class="no-bets">
-                <div class="no-bets-icon">⚠️</div>
-                <h3>Error Loading Bets</h3>
-                <p>Please try refreshing the page.</p>
-            </div>
-        `;
+        container.innerHTML = renderError();
         return;
     }
 
-    // Update header
-    document.getElementById('betsDate').textContent = formatDate(data.date);
-    document.getElementById('totalBets').textContent = data.summary.total_bets;
-    document.getElementById('totalUnits').textContent = data.summary.total_units;
-    document.getElementById('teamsCount').textContent = data.summary.teams_count || data.teams.length;
+    // Update hero summary
+    const dateEl = document.getElementById('betsDate');
+    if (data.date) {
+        dateEl.textContent = formatDate(data.date);
+    }
 
-    // Render teams
-    const container = document.getElementById('teamsContainer');
-    const teams = data.teams || [];
+    document.getElementById('totalBets').textContent = data.summary.total_bets || 0;
+    document.getElementById('totalUnits').textContent = `${data.summary.total_units || 0}u`;
+    document.getElementById('gamesCount').textContent = data.summary.games_count || 0;
 
-    if (teams.length === 0) {
+    // Render game cards (API returns games array now)
+    const games = data.games || [];
+
+    if (games.length === 0) {
         container.innerHTML = renderNoBets();
         return;
     }
 
-    // Render team cards
-    let html = '';
-    for (const team of teams) {
-        html += renderTeamCard(team);
-    }
-
-    container.innerHTML = html;
+    // Render game cards - already sorted by API (most bets first, then alphabetically)
+    container.innerHTML = games.map(game => renderGameCard(game)).join('');
 }
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', initBetsPage);
+
+// Refresh every 5 minutes
+setInterval(initBetsPage, 5 * 60 * 1000);

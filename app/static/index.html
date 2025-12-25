@@ -5,96 +5,97 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Goldilocks V2 PnL Tracker</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="stylesheet" href="/static/styles.css?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css?v=5">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <!-- Ambient background effects -->
+    <div class="ambient-glow ambient-glow-1"></div>
+    <div class="ambient-glow ambient-glow-2"></div>
+
     <div class="container">
         <!-- Header -->
         <header>
-            <h1>Goldilocks <span>V2</span> Performance</h1>
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <nav class="nav-tabs">
-                    <a href="/" class="nav-tab active">Performance</a>
-                    <a href="/live" class="nav-tab">Live</a>
-                    <a href="/bets" class="nav-tab">Today's Bets</a>
-                </nav>
-                <span class="last-updated" id="lastUpdated">Loading...</span>
+            <div class="logo">
+                <span class="logo-icon">◈</span>
+                <h1>Goldilocks <span>V2</span></h1>
             </div>
+            <nav class="nav-tabs">
+                <a href="/" class="nav-tab active">Performance</a>
+                <a href="/live" class="nav-tab">Live</a>
+                <a href="/bets" class="nav-tab">Today's Bets</a>
+            </nav>
         </header>
 
-        <!-- Summary Cards -->
-        <div class="summary-cards">
-            <div class="card">
-                <div class="card-label">Bankroll</div>
-                <div class="card-value neutral" id="bankroll">$--</div>
-                <div class="card-sub">Started at $100</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Win Rate</div>
-                <div class="card-value neutral" id="winRate">--%</div>
-                <div class="card-sub" id="winLossCount">0W - 0L</div>
-            </div>
-            <div class="card">
-                <div class="card-label">ROI</div>
-                <div class="card-value neutral" id="roi">--%</div>
-                <div class="card-sub" id="totalBets">0 bets</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Pending</div>
-                <div class="card-value neutral" id="pending">--</div>
-                <div class="card-sub">Awaiting results</div>
-            </div>
-        </div>
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-card">
+                <!-- Main Bankroll Display -->
+                <div class="hero-main">
+                    <div class="bankroll-label">Current Bankroll</div>
+                    <div class="bankroll-display">
+                        <span class="bankroll-value" id="bankroll">$--</span>
+                        <div class="bankroll-change" id="bankrollChange">
+                            <span class="change-arrow">↑</span>
+                            <span class="change-amount">+$0.00</span>
+                            <span class="change-percent">(0%)</span>
+                        </div>
+                    </div>
 
-        <!-- Charts -->
-        <div class="charts-section">
-            <div class="chart-container">
-                <h2>Bankroll Over Time</h2>
+                    <!-- Time Period Toggles -->
+                    <div class="period-toggles">
+                        <button class="period-btn active" data-period="all">All Time</button>
+                        <button class="period-btn" data-period="month">This Month</button>
+                        <button class="period-btn" data-period="week">This Week</button>
+                    </div>
+                </div>
+
+                <!-- Supporting Stats -->
+                <div class="hero-stats">
+                    <div class="stat-pill">
+                        <div class="stat-pill-label">Win Rate</div>
+                        <div class="stat-pill-value" id="winRate">--%</div>
+                        <div class="stat-pill-sub" id="winLossCount">0W - 0L</div>
+                    </div>
+                    <div class="stat-pill">
+                        <div class="stat-pill-label">ROI</div>
+                        <div class="stat-pill-value" id="roi">--%</div>
+                        <div class="stat-pill-sub" id="totalBets">0 bets</div>
+                    </div>
+                    <div class="stat-pill">
+                        <div class="stat-pill-label">Today</div>
+                        <div class="stat-pill-value" id="todayRecord">--</div>
+                        <div class="stat-pill-sub" id="todayPnl">$0.00</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2>Bankroll Over Time</h2>
+                    <span class="chart-updated" id="lastUpdated">--</span>
+                </div>
                 <div class="chart-wrapper">
                     <canvas id="bankrollChart"></canvas>
                 </div>
             </div>
-            <div class="chart-container">
-                <h2>Daily P&L</h2>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2>Daily P&L</h2>
+                </div>
                 <div class="chart-wrapper">
                     <canvas id="pnlChart"></canvas>
                 </div>
             </div>
-        </div>
-
-        <!-- Tables -->
-        <div class="tables-section">
-            <div class="table-container">
-                <h2>By Tier</h2>
-                <table id="tierTable">
-                    <thead>
-                        <tr>
-                            <th>Tier</th>
-                            <th>Record</th>
-                            <th>Win Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div class="table-container">
-                <h2>By Date</h2>
-                <table id="dateTable">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Record</th>
-                            <th>Win Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
+        </section>
     </div>
 
-    <script src="/static/chart.js?v=2"></script>
+    <script src="/static/chart.js?v=3"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// Goldilocks V2 Live Tracker - Game Cards Edition
+// Goldilocks V2 Live Tracker - Redesigned
 
 // Cache for recent results (so we don't lose them on live updates)
 let cachedRecentResults = null;
@@ -8,12 +8,8 @@ async function loadLiveBets() {
         const response = await fetch('/api/live-bets');
         const data = await response.json();
 
-        // Update summary stats
-        document.getElementById('totalBets').textContent = data.summary.total;
-        document.getElementById('liveCount').textContent = data.summary.live;
-        document.getElementById('hitsCount').textContent = data.summary.hits;
-        document.getElementById('pendingCount').textContent = data.summary.pending;
-        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        // Update hero summary stats
+        updateHeroStats(data);
 
         // Handle different tracking states
         const container = document.getElementById('gameCards');
@@ -68,6 +64,63 @@ async function loadLiveBets() {
         // Still show recent results even on error
         appendCachedRecentResults();
     }
+}
+
+function updateHeroStats(data) {
+    const summary = data.summary;
+    const bets = data.bets || [];
+    const games = data.games || [];
+
+    // Update date
+    const dateEl = document.getElementById('trackingDate');
+    if (data.date) {
+        const date = new Date(data.date + 'T00:00:00');
+        dateEl.textContent = date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    } else {
+        dateEl.textContent = new Date().toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+
+    // Calculate hits and total settled
+    const hits = bets.filter(b => b.status === 'hit').length;
+    const misses = bets.filter(b => b.status === 'miss').length;
+    const settled = hits + misses;
+
+    // Update hits display
+    document.getElementById('hitsDisplay').textContent = `${hits}/${settled || summary.total}`;
+
+    // Calculate P&L (hits earn ~0.91 units, losses lose 1 unit per default unit bet)
+    // For simplicity, assume 1 unit per bet
+    const pnl = (hits * 0.91) - misses;
+    const pnlEl = document.getElementById('todayPnl');
+    pnlEl.textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+    pnlEl.className = `live-stat-value ${pnl >= 0 ? 'positive' : 'negative'}`;
+
+    // Update win rate
+    const winRate = settled > 0 ? (hits / settled * 100) : 0;
+    const winRateEl = document.getElementById('winRateDisplay');
+    winRateEl.textContent = `${winRate.toFixed(0)}%`;
+
+    // Update pending count
+    document.getElementById('pendingCount').textContent = summary.pending || 0;
+
+    // Update status bar
+    const liveGames = games.filter(g => g.status === 'Live').length;
+    const upcomingGames = games.filter(g => g.status === 'Not Started').length;
+
+    document.getElementById('liveGamesStatus').innerHTML =
+        `<span style="color: #f87171;">●</span> ${liveGames} game${liveGames !== 1 ? 's' : ''} live`;
+    document.getElementById('upcomingGamesStatus').innerHTML =
+        `○ ${upcomingGames} game${upcomingGames !== 1 ? 's' : ''} upcoming`;
+    document.getElementById('lastUpdateTime').textContent =
+        `Updated ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 }
 
 function appendCachedRecentResults() {
@@ -174,22 +227,14 @@ function renderGameCard(gameKey, game, bets) {
         <div class="game-card ${isLive ? 'is-live' : ''} ${isFinished ? 'is-finished' : ''}">
             <!-- Card Header -->
             <div class="card-header">
-                <div class="status-badge ${isLive ? 'live' : isFinished ? 'final' : 'upcoming'}">
-                    ${isLive ? '<span class="pulse-dot"></span>LIVE' : isFinished ? 'FINAL' : 'UPCOMING'}
+                <div class="card-header-left">
+                    <div class="status-badge ${isLive ? 'live' : isFinished ? 'final' : 'upcoming'}">
+                        ${isLive ? '<span class="pulse-dot"></span>LIVE' : isFinished ? 'FINAL' : 'UPCOMING'}
+                    </div>
+                    <span class="clock">${clockDisplay}</span>
                 </div>
-                <span class="clock">${clockDisplay}</span>
-            </div>
-
-            <!-- Scoreboard -->
-            <div class="scoreboard">
-                <div class="team away">
-                    <span class="team-name">${awayTeam}</span>
-                    <span class="team-score">${awayScore}</span>
-                </div>
-                <span class="vs">@</span>
-                <div class="team home">
-                    <span class="team-name">${homeTeam}</span>
-                    <span class="team-score">${homeScore}</span>
+                <div class="card-header-right">
+                    <span class="game-score">${awayTeam} ${awayScore} - ${homeScore} ${homeTeam}</span>
                 </div>
             </div>
 
@@ -220,7 +265,7 @@ function renderPlayerRow(bet) {
             <div class="player-info">
                 <div class="player-name-row">
                     <span class="player-name">${bet.player_name}</span>
-                    ${isGoldilocks ? '<span class="goldilocks-badge">GOLDILOCKS</span>' : ''}
+                    ${isGoldilocks ? '<span class="goldilocks-badge">GOLDEN</span>' : ''}
                     <span class="status-chip ${statusInfo.class}">${statusInfo.text}</span>
                 </div>
                 <div class="bet-details">
@@ -350,7 +395,7 @@ function renderResultRow(bet, outcome) {
         <div class="result-row ${outcome}">
             <div class="result-player">
                 <span class="player-name">${bet.player_name}</span>
-                ${isGoldilocks ? '<span class="goldilocks-badge">GOLDILOCKS</span>' : ''}
+                ${isGoldilocks ? '<span class="goldilocks-badge">GOLDEN</span>' : ''}
             </div>
             <div class="result-bet">
                 <span class="direction ${bet.direction.toLowerCase()}">${bet.direction}</span>
