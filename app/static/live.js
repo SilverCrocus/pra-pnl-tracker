@@ -252,6 +252,7 @@ function renderPlayerRow(bet) {
     const line = bet.betting_line;
     const direction = bet.direction;
     const isGoldilocks = bet.tier === 'GOLDEN';
+    const isOnCourt = bet.oncourt && bet.game_status === 'Live';
 
     // Calculate progress
     const progress = Math.min((current / line) * 100, 150);
@@ -267,6 +268,7 @@ function renderPlayerRow(bet) {
                     <span class="player-name">${bet.player_name}</span>
                     ${isGoldilocks ? '<span class="goldilocks-badge">GOLDEN</span>' : ''}
                     <span class="status-chip ${statusInfo.class}">${statusInfo.text}</span>
+                    ${isOnCourt ? '<span class="oncourt-badge">ON COURT</span>' : ''}
                 </div>
                 <div class="bet-details">
                     <span class="direction ${direction.toLowerCase()}">${direction}</span>
@@ -296,10 +298,18 @@ function formatClock(game) {
     if (status === 'Not Started') return 'Upcoming';
 
     const period = game.period;
+    let periodText;
     if (period === 0) return '-';
-    if (period <= 4) return `Q${period}`;
-    if (period === 5) return 'OT';
-    return `${period - 4}OT`;
+    if (period <= 4) periodText = `Q${period}`;
+    else if (period === 5) periodText = 'OT';
+    else periodText = `${period - 4}OT`;
+
+    // Add game clock if available
+    const gameClock = game.game_clock;
+    if (gameClock) {
+        return `${periodText} · ${gameClock}`;
+    }
+    return periodText;
 }
 
 function getStatusInfo(bet) {

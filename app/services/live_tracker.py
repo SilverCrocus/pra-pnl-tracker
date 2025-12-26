@@ -77,6 +77,7 @@ class LiveTracker:
                 for player in team['players']:
                     if player.get('statistics'):
                         stats = player['statistics']
+                        oncourt_val = player.get('oncourt', 0)
                         players.append({
                             'player_id': int(player.get('personId', 0)),
                             'player': f"{player['firstName']} {player['familyName']}",
@@ -90,6 +91,7 @@ class LiveTracker:
                                 stats.get('assists', 0)
                             ),
                             'minutes': stats.get('minutesCalculated', 'DNP'),
+                            'oncourt': oncourt_val == '1' or oncourt_val == 1,
                         })
 
             return pd.DataFrame(players)
@@ -119,6 +121,7 @@ class LiveTracker:
                         'period': game['period'],
                         'game_time': game['game_time'],
                         'game_status': game['status_text'],
+                        'oncourt': row.get('oncourt', False),
                     }
 
         return all_stats, games

@@ -482,7 +482,20 @@ async def get_live_bets(db: Session = Depends(get_db)):
             "status_text": status_info['status_text'],
             "status_color": status_info['status_color'],
             "distance": round(status_info['distance'], 1) if status_info['distance'] is not None else None,
+            "oncourt": player_stats.get('oncourt', False),
         })
+
+    # Helper to format game clock from ISO duration (PT03M02.00S) to "3:02"
+    def format_game_clock(clock_str):
+        if not clock_str or not isinstance(clock_str, str):
+            return ""
+        import re
+        match = re.match(r'PT(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?', clock_str)
+        if match:
+            mins = int(match.group(1)) if match.group(1) else 0
+            secs = int(float(match.group(2))) if match.group(2) else 0
+            return f"{mins}:{secs:02d}"
+        return clock_str
 
     # Format games for display
     games_summary = [
@@ -491,6 +504,7 @@ async def get_live_bets(db: Session = Depends(get_db)):
             "score": f"{g['away_score']} - {g['home_score']}",
             "status": g['status_text'],
             "period": g['period'],
+            "game_clock": format_game_clock(g.get('game_time', '')),
         }
         for g in games
     ]
