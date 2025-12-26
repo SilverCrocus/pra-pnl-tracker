@@ -571,33 +571,23 @@ async def get_todays_bets(db: Session = Depends(get_db)):
     # Get today's games from NBA API to build team-to-game mapping
     team_to_game = {}
     try:
-        # Try live scoreboard first
-        games = live_tracker.get_live_games(filter_date=today.isoformat())
-        if not games:
-            games = live_tracker.get_live_games()
+        # Always use ScoreboardV2 for today's schedule - it's the reliable source
+        # (live_tracker.get_live_games() without filter returns stale data from previous days)
+        from nba_api.stats.endpoints import scoreboardv2
+        from nba_api.stats.static import teams as nba_teams
 
-        # If still no games, use ScoreboardV2 which has schedule data
-        if not games:
-            from nba_api.stats.endpoints import scoreboardv2
-            from nba_api.stats.static import teams as nba_teams
+        # Build team ID to tricode map
+        team_id_to_tricode = {t['id']: t['abbreviation'] for t in nba_teams.get_teams()}
 
-            # Build team ID to tricode map
-            team_id_to_tricode = {t['id']: t['abbreviation'] for t in nba_teams.get_teams()}
+        scoreboard = scoreboardv2.ScoreboardV2(game_date=today.strftime('%m/%d/%Y'))
+        games_df = scoreboard.get_data_frames()[0]
 
-            scoreboard = scoreboardv2.ScoreboardV2(game_date=today.strftime('%m/%d/%Y'))
-            games_df = scoreboard.get_data_frames()[0]
-
-            for _, row in games_df.iterrows():
-                home_code = team_id_to_tricode.get(row['HOME_TEAM_ID'], 'UNK')
-                away_code = team_id_to_tricode.get(row['VISITOR_TEAM_ID'], 'UNK')
-                matchup = f"{away_code} @ {home_code}"
-                team_to_game[home_code] = matchup
-                team_to_game[away_code] = matchup
-        else:
-            for game in games:
-                matchup = f"{game['away_team']} @ {game['home_team']}"
-                team_to_game[game['home_team']] = matchup
-                team_to_game[game['away_team']] = matchup
+        for _, row in games_df.iterrows():
+            home_code = team_id_to_tricode.get(row['HOME_TEAM_ID'], 'UNK')
+            away_code = team_id_to_tricode.get(row['VISITOR_TEAM_ID'], 'UNK')
+            matchup = f"{away_code} @ {home_code}"
+            team_to_game[home_code] = matchup
+            team_to_game[away_code] = matchup
     except Exception as e:
         pass  # Continue without game data if API fails
 
