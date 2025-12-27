@@ -414,12 +414,23 @@ async def get_live_bets(db: Session = Depends(get_db)):
         Bet.game_date == today
     ).all()
 
+    # If no bets today, find the most recent day with bets
     if not todays_bets:
-        return {"bets": [], "games": [], "summary": {"total": 0, "live": 0, "hits": 0, "pending": 0}, "tracking_state": "no_bets", "date": today.isoformat()}
+        most_recent = db.query(Bet.game_date).order_by(desc(Bet.game_date)).first()
 
-    # Get live stats from NBA API - filter to only today's games
+        if not most_recent:
+            # No bets at all in database
+            return {"bets": [], "games": [], "summary": {"total": 0, "live": 0, "hits": 0, "pending": 0}, "tracking_state": "no_bets", "date": today.isoformat()}
+
+        # Use that date instead
+        target_date = most_recent[0]
+        todays_bets = db.query(Bet).filter(Bet.game_date == target_date).all()
+    else:
+        target_date = today
+
+    # Get live stats from NBA API - filter to target date's games
     try:
-        live_stats, games = live_tracker.get_all_live_stats(filter_date=today.isoformat())
+        live_stats, games = live_tracker.get_all_live_stats(filter_date=target_date.isoformat())
     except Exception as e:
         live_stats = {}
         games = []
@@ -551,7 +562,7 @@ async def get_live_bets(db: Session = Depends(get_db)):
             "finished": finished_count,
         },
         "tracking_state": tracking_state,
-        "date": today.isoformat(),
+        "date": target_date.isoformat(),
     }
 
 
