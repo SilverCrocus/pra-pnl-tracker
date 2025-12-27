@@ -436,6 +436,13 @@ async def get_live_bets(db: Session = Depends(get_db)):
         minutes_played = live_tracker.parse_minutes(minutes_raw)
         game_status = player_stats.get('game_status', 'Not Started')
 
+        # If bet has a final result in DB but no live stats, use DB values
+        # This handles the case where games finished and live API no longer returns data
+        if bet.result in ('WON', 'LOST', 'VOIDED') and current_pra is None:
+            current_pra = bet.actual_pra
+            minutes_played = bet.actual_minutes or 0
+            game_status = 'Finished'
+
         # Calculate tracking status
         status_info = live_tracker.calculate_tracking_status(
             current_pra=current_pra,
@@ -444,6 +451,14 @@ async def get_live_bets(db: Session = Depends(get_db)):
             minutes_played=minutes_played,
             game_status=game_status
         )
+
+        # Override status for settled bets from database
+        if bet.result == 'WON':
+            status_info = {'status': 'hit', 'status_text': 'HIT', 'status_color': 'green', 'projected': current_pra, 'distance': (current_pra or 0) - bet.betting_line if bet.direction == 'OVER' else bet.betting_line - (current_pra or 0)}
+        elif bet.result == 'LOST':
+            status_info = {'status': 'miss', 'status_text': 'MISS', 'status_color': 'red', 'projected': current_pra, 'distance': (current_pra or 0) - bet.betting_line if bet.direction == 'OVER' else bet.betting_line - (current_pra or 0)}
+        elif bet.result == 'VOIDED':
+            status_info = {'status': 'voided', 'status_text': 'VOIDED', 'status_color': 'gray', 'projected': None, 'distance': None}
 
         # Count stats
         if status_info['status'] == 'hit':

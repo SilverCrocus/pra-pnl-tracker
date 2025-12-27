@@ -191,6 +191,7 @@ def fetch_recent_game_results(days_back: int = 3) -> Dict[tuple, Dict]:
 def update_bet_results(db: Session, results_map: Dict[tuple, Dict]) -> int:
     """
     Update pending bets with actual results.
+    Also re-checks VOIDED bets that have null actual_pra (may have been voided due to incomplete API data).
 
     Args:
         db: Database session
@@ -199,13 +200,20 @@ def update_bet_results(db: Session, results_map: Dict[tuple, Dict]) -> int:
     Returns:
         Number of bets updated
     """
-    # Get all pending bets
-    pending_bets = db.query(Bet).filter(Bet.result == "PENDING").all()
-    logger.info(f"Found {len(pending_bets)} pending bets to check")
+    from sqlalchemy import or_
+
+    # Get pending bets AND voided bets with null actual_pra (those may have been incorrectly voided)
+    bets_to_check = db.query(Bet).filter(
+        or_(
+            Bet.result == "PENDING",
+            (Bet.result == "VOIDED") & (Bet.actual_pra == None)
+        )
+    ).all()
+    logger.info(f"Found {len(bets_to_check)} bets to check (pending + voided with null PRA)")
 
     updated = 0
 
-    for bet in pending_bets:
+    for bet in bets_to_check:
         key = (bet.player_id, bet.game_date.isoformat())
 
         if key in results_map:

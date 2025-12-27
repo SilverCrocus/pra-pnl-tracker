@@ -324,6 +324,7 @@ function getStatusInfo(bet) {
         'busted': { text: 'BUSTED', class: 'danger', valueClass: 'text-danger' },
         'danger': { text: 'DANGER', class: 'danger', valueClass: 'text-danger' },
         'miss': { text: 'MISS', class: 'danger', valueClass: 'text-danger' },
+        'voided': { text: 'VOIDED', class: 'voided', valueClass: 'text-voided' },
         'not_started': { text: 'PENDING', class: 'pending', valueClass: '' },
     };
     return statusMap[status] || { text: status?.toUpperCase() || 'UNKNOWN', class: 'pending', valueClass: '' };
@@ -335,6 +336,7 @@ function getBarColor(bet) {
     if (status === 'on_track') return 'bar-on-track';
     if (status === 'needs_more' || status === 'close') return 'bar-warning';
     if (status === 'unlikely' || status === 'busted' || status === 'danger' || status === 'miss') return 'bar-danger';
+    if (status === 'voided') return 'bar-voided';
     return 'bar-neutral';
 }
 
@@ -342,8 +344,7 @@ function renderResultsTable(container, bets, dateStr) {
     // Group bets by outcome
     const hits = bets.filter(b => b.status === 'hit');
     const misses = bets.filter(b => b.status === 'miss');
-    const voided = bets.filter(b => b.status === 'not_started' || b.game_status === 'Not Started')
-        .concat(bets.filter(b => !['hit', 'miss'].includes(b.status) && b.current_pra === null));
+    const voided = bets.filter(b => b.status === 'voided' || (b.status === 'not_started' && b.game_status === 'Finished'));
 
     // Calculate win rate (excluding voided)
     const settled = hits.length + misses.length;
