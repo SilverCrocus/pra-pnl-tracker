@@ -16,8 +16,8 @@ NBA_PRA_BETS = Path.home() / "Documents" / "NBA_PRA" / "production" / "outputs" 
 
 
 def load_bets() -> list[dict]:
-    """Load all V2 bets from CSV files."""
-    pattern = str(NBA_PRA_BETS / "goldilocks_v2_*.csv")
+    """Load all V3 bets from CSV files."""
+    pattern = str(NBA_PRA_BETS / "goldilocks_v3_*.csv")
     files = glob.glob(pattern)
 
     if not files:

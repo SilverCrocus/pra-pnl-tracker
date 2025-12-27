@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Import existing goldilocks_v2 data from NBA_PRA repo for local testing.
+Import existing goldilocks_v3 data from NBA_PRA repo for local testing.
 
 Usage:
     uv run python scripts/import_from_nba_pra.py
@@ -16,17 +16,17 @@ BETS_SOURCE = NBA_PRA_DIR / "production" / "outputs" / "bets"
 
 
 def import_goldilocks_files():
-    """Copy goldilocks_v2 CSV files from NBA_PRA to local data dir."""
+    """Copy goldilocks_v3 CSV files from NBA_PRA to local data dir."""
     LOCAL_DATA_DIR.mkdir(exist_ok=True)
 
-    # Find all goldilocks_v2 files
-    source_files = list(BETS_SOURCE.glob("goldilocks_v2_*.csv"))
+    # Find all goldilocks_v3 files
+    source_files = list(BETS_SOURCE.glob("goldilocks_v3_*.csv"))
 
     if not source_files:
-        print(f"No goldilocks_v2 files found in {BETS_SOURCE}")
+        print(f"No goldilocks_v3 files found in {BETS_SOURCE}")
         return
 
-    print(f"Found {len(source_files)} goldilocks_v2 files")
+    print(f"Found {len(source_files)} goldilocks_v3 files")
 
     for src in sorted(source_files):
         dst = LOCAL_DATA_DIR / src.name
