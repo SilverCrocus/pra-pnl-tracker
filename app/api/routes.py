@@ -202,11 +202,13 @@ async def update_results_for_date(target_date: str, db: Session = Depends(get_db
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
-    # First, reset any VOIDED bets for this date that don't have actual_pra
+    # First, reset any VOIDED bets for this date that don't have meaningful actual_pra
+    # Check for both NULL and 0 (0 indicates incomplete data from API)
+    from sqlalchemy import or_
     voided_bets = db.query(Bet).filter(
         Bet.game_date == target,
         Bet.result == "VOIDED",
-        Bet.actual_pra.is_(None)
+        or_(Bet.actual_pra.is_(None), Bet.actual_pra == 0)
     ).all()
 
     reset_count = 0
