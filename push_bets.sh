@@ -11,15 +11,15 @@ echo "=== Pushing Goldilocks Bets to Production ==="
 
 # Copy all goldilocks CSVs from NBA_PRA to tracker
 echo "Copying CSVs..."
-cp "$NBA_PRA_DIR/production/outputs/bets/goldilocks_v3_"*.csv "$TRACKER_DIR/data/"
+cp "$NBA_PRA_DIR/production/outputs/bets/goldilocks_v4_"*.csv "$TRACKER_DIR/data/"
 
 # Count files
-COUNT=$(ls -1 "$TRACKER_DIR/data/goldilocks_v3_"*.csv 2>/dev/null | wc -l | tr -d ' ')
+COUNT=$(ls -1 "$TRACKER_DIR/data/goldilocks_v4_"*.csv 2>/dev/null | wc -l | tr -d ' ')
 echo "Copied $COUNT CSV files"
 
 # Git add, commit, push
 cd "$TRACKER_DIR"
-git add -f data/goldilocks_v3_*.csv
+git add -f data/goldilocks_v4_*.csv
 
 if git diff --staged --quiet; then
     echo "No changes to commit"

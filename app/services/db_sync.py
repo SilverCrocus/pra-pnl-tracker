@@ -12,8 +12,8 @@ from app.config import STARTING_BANKROLL, calculate_pnl
 
 
 def get_goldilocks_csv_files(data_dir: Path) -> List[Path]:
-    """Find all goldilocks_v3_*.csv files."""
-    pattern = str(data_dir / "goldilocks_v3_*.csv")
+    """Find all goldilocks_v4_*.csv files."""
+    pattern = str(data_dir / "goldilocks_v4_*.csv")
     return sorted(glob.glob(pattern))
 
 
