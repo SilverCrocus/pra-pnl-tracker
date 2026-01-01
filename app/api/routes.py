@@ -740,18 +740,5 @@ async def health_check():
     return {"status": "healthy"}
 
 
-@router.post("/reset-database")
-async def reset_database(api_key: str, db: Session = Depends(get_db)):
-    """Reset all bets and daily summaries (protected by API key)."""
-    if api_key != SYNC_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-
-    bets_deleted = db.query(Bet).delete()
-    summaries_deleted = db.query(DailySummary).delete()
-    db.commit()
-
-    return {"status": "success", "bets_deleted": bets_deleted, "summaries_deleted": summaries_deleted}
-
-
 # Need to import Integer for the cast
 from sqlalchemy import Integer

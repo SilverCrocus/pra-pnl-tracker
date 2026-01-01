@@ -9,9 +9,9 @@ from app.models.database import init_db
 from app.services.db_sync import sync_all_bets
 
 app = FastAPI(
-    title="Goldilocks V2 PnL Tracker",
+    title="Goldilocks V4 PnL Tracker",
     description="Public dashboard for NBA PRA betting model performance",
-    version="0.1.0"
+    version="0.2.0"
 )
 
 # Include API routes
