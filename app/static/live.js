@@ -88,25 +88,25 @@ function updateHeroStats(data) {
         });
     }
 
-    // Calculate hits and total settled
+    // Calculate hits and total settled (voided bets excluded)
     const hits = bets.filter(b => b.status === 'hit').length;
     const misses = bets.filter(b => b.status === 'miss').length;
     const settled = hits + misses;
 
-    // Update hits display
-    document.getElementById('hitsDisplay').textContent = `${hits}/${settled || summary.total}`;
+    // Update hits display - show — when nothing settled yet
+    document.getElementById('hitsDisplay').textContent = settled > 0 ? `${hits}/${settled}` : '—';
 
     // Calculate P&L (hits earn ~0.91 units, losses lose 1 unit per default unit bet)
-    // For simplicity, assume 1 unit per bet
+    // Voided bets don't affect P&L (stake returned)
     const pnl = (hits * 0.91) - misses;
     const pnlEl = document.getElementById('todayPnl');
     pnlEl.textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
     pnlEl.className = `live-stat-value ${pnl >= 0 ? 'positive' : 'negative'}`;
 
-    // Update win rate
+    // Update win rate - show —% when nothing settled yet
     const winRate = settled > 0 ? (hits / settled * 100) : 0;
     const winRateEl = document.getElementById('winRateDisplay');
-    winRateEl.textContent = `${winRate.toFixed(0)}%`;
+    winRateEl.textContent = settled > 0 ? `${winRate.toFixed(0)}%` : '—%';
 
     // Update pending count
     document.getElementById('pendingCount').textContent = summary.pending || 0;

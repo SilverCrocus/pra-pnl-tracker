@@ -186,6 +186,7 @@ class TestLiveBetsEndpoint:
         assert "live" in summary
         assert "hits" in summary
         assert "pending" in summary
+        assert "voided" in summary
 
     def test_live_bets_tracking_states(self, client, sample_bets):
         """Tracking state is a valid value."""

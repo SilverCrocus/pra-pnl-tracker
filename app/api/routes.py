@@ -440,6 +440,7 @@ async def get_live_bets(db: Session = Depends(get_db)):
     hits = 0
     live_count = 0
     pending = 0
+    voided = 0
 
     for bet in todays_bets:
         player_stats = live_stats.get(bet.player_id, {})
@@ -472,10 +473,15 @@ async def get_live_bets(db: Session = Depends(get_db)):
             status_info = {'status': 'miss', 'status_text': 'MISS', 'status_color': 'red', 'projected': current_pra, 'distance': (current_pra or 0) - bet.betting_line if bet.direction == 'OVER' else bet.betting_line - (current_pra or 0)}
         elif bet.result == 'VOIDED':
             status_info = {'status': 'voided', 'status_text': 'VOIDED', 'status_color': 'gray', 'projected': None, 'distance': None}
+        # Check for voided (DNP) during live tracking - game finished but player didn't play
+        elif game_status == 'Finished' and minutes_played < 1:
+            status_info = {'status': 'voided', 'status_text': 'VOIDED', 'status_color': 'gray', 'projected': None, 'distance': None}
 
         # Count stats
         if status_info['status'] == 'hit':
             hits += 1
+        elif status_info['status'] == 'voided':
+            voided += 1
         if game_status == 'Live':
             live_count += 1
         if game_status == 'Not Started':
@@ -560,6 +566,7 @@ async def get_live_bets(db: Session = Depends(get_db)):
             "hits": hits,
             "pending": pending,
             "finished": finished_count,
+            "voided": voided,
         },
         "tracking_state": tracking_state,
         "date": target_date.isoformat(),
